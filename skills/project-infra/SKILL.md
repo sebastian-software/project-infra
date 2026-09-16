@@ -29,7 +29,9 @@ Read only the references relevant to the requested work:
 
 Use the common guidance for infrastructure changes and the documentation
 guidance when the contributor workflow changes. Resolve these paths relative
-to this skill directory, not the consuming repository's root.
+to this skill directory, not the consuming repository's root. The references link
+to configuration excerpts under `assets/`; adapt an excerpt to the project instead
+of copying it verbatim.
 
 ## Apply the conventions
 

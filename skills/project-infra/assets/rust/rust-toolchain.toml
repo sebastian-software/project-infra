@@ -1,0 +1,5 @@
+# Contributor toolchain. rustup installs it on first use, locally and in CI.
+# The consumer floor is `rust-version` in Cargo.toml, not this file.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]

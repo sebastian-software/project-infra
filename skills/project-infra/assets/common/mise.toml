@@ -1,0 +1,4 @@
+# Shared CLI tools that the package manager does not provide, for example in a
+# Rust-only repository. Commit the lockfile that mise generates next to it.
+[tools]
+"npm:mdtheme" = "0.1.1"

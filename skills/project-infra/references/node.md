@@ -32,7 +32,9 @@ Tool responsibilities are documented in the [Vite guide](https://vite.dev/guide/
 Use pnpm, declare its selected version in `packageManager`, commit the lockfile,
 and use frozen installs in CI. Declare workspace membership in
 `pnpm-workspace.yaml`. This keeps package relationships and dependency resolution
-explicit across local work and CI.
+explicit across local work and CI. The [package.json](../assets/node/package.json)
+and [pnpm-workspace.yaml](../assets/node/pnpm-workspace.yaml) excerpts show the
+declared fields.
 
 Start new projects on a supported Node LTS release compatible with the chosen
 tools. Declare the consumer support floor in `engines` and test it for published
@@ -67,7 +69,9 @@ narrow. Remove a lint check only when its required behavior remains covered.
 
 Enable `strict`, `noUncheckedIndexedAccess`, and `exactOptionalPropertyTypes`.
 These expose unchecked values and ambiguous optional fields before they become
-runtime failures. Fix the affected code when adopting the flags.
+runtime failures. Fix the affected code when adopting the flags. The
+[tsconfig excerpt](../assets/node/tsconfig.json) enables them with bundler
+resolution.
 
 Use ESM for new packages. Keep required public entry points compatible when
 updating an existing package. Match TypeScript module resolution to the actual
@@ -77,6 +81,8 @@ runtime or bundler, and generate framework types before checks that need them.
 
 Use Vite for application builds, tsdown for distributable package bundles, and
 Vitest for tests. Configure only the outputs and environments the product needs.
+The [tsdown excerpt](../assets/node/tsdown.config.ts) configures an ESM package
+bundle with declarations.
 
 From a clean install, the project gate should cover formatting, lint, types,
 tests, and the build. A successful source build is not sufficient for a published

@@ -13,11 +13,13 @@ Declare the minimum supported Rust version (MSRV) as `rust-version` in
 `Cargo.toml`. Keep shared values in `[workspace.package]` and opt members into
 inheritance. Derive the CI MSRV check from that declaration to avoid conflicting
 support claims. Test the declared floor and preserve it during tooling updates.
+The [workspace](../assets/rust/Cargo.toml) and
+[member](../assets/rust/crates/example/Cargo.toml) excerpts show the inheritance.
 
 Use `rust-toolchain.toml` for the contributor toolchain and rustfmt/Clippy
-components. Default to stable; pin a release when repeatable tool behavior
-requires it. The contributor toolchain and the consumer support floor serve
-different purposes.
+components, as in the [toolchain excerpt](../assets/rust/rust-toolchain.toml).
+Default to stable; pin a release when repeatable tool behavior requires it. The
+contributor toolchain and the consumer support floor serve different purposes.
 
 ## Keep formatting and lint policy native
 
@@ -35,13 +37,9 @@ where it must be upheld.
 
 ## Share the local and CI checks
 
-For a workspace with compatible features, start with:
-
-```sh
-cargo fmt --all --check
-cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
-cargo test --workspace --all-features --locked
-```
+For a workspace with compatible features, start with the commands in the
+[check script](../assets/rust/scripts/check.sh): formatting, Clippy with warnings
+denied, tests, and the dependency policy check, all with locked resolution.
 
 Commit the workspace lockfile and use locked resolution in ordinary CI. Add a
 rustdoc build with warnings denied for published libraries. Test the MSRV and

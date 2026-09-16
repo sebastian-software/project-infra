@@ -19,9 +19,13 @@ checks into jobs, provide a stable aggregate that runs after failures and
 examines each required result. Handle skipped jobs explicitly so omitted work
 cannot accidentally produce a passing gate.
 
+The [workflow excerpt](../assets/ci/check.yml) shows pinned actions, read-only
+permissions, cancellation of superseded runs, and such an aggregate gate.
+
 ## Share dependency policy
 
-Extend `github>sebastian-software/renovate-config`. Keep general update timing,
+Extend `github>sebastian-software/renovate-config`, as in the
+[renovate.json excerpt](../assets/ci/renovate.json). Keep general update timing,
 grouping, and automerge policy in that shared preset. Consumers own only their
 specific exceptions. This prevents repository copies from drifting apart.
 
