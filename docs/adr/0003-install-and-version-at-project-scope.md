@@ -68,3 +68,4 @@ documented workflow. Different apps may require different steps.
 
 - [Project-scoped distribution RFC](../rfcs/0002-project-scoped-distribution.md)
 - [Git trailers](https://git-scm.com/docs/git-interpret-trailers)
+- [Dalo](https://github.com/sebastian-software/dalo)

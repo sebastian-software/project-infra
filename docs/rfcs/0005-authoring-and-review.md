@@ -2,7 +2,7 @@
 
 - Status: draft
 - Date: 2026-09-16
-- Decisions: [ADR-0006](../adr/0006-prioritize-instruction-quality.md),
+- Related decisions: [ADR-0006](../adr/0006-prioritize-instruction-quality.md),
   [ADR-0007](../adr/0007-make-documentation-part-of-the-product.md)
 
 ## Problem

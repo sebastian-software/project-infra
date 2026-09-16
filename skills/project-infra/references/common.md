@@ -35,7 +35,8 @@ Declare package-manager versions and supported runtimes in native manifests.
 Commit lockfiles and use them in CI so dependency resolution is reviewable and
 repeatable.
 
-Use mise for additional shared CLI tools such as mdtheme, with project-local
+Use [mise](https://mise.jdx.dev) for additional shared CLI tools such as
+[mdtheme](https://github.com/sebastian-software/mdtheme), with project-local
 configuration and a committed lockfile. Document the installation step and use
 the selected tool without silently falling back to a different global version.
 Keep Cargo and package-manager metadata in their native locations.

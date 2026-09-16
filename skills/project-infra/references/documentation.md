@@ -24,9 +24,10 @@ of the instructions.
 
 ## Generate shared README content
 
-Use mdtheme for shared README branding. Keep authored content in `README.md.src`,
-rendering inputs in `mdtheme.yaml`, and the generated `README.md` committed.
-Select the shared theme revision explicitly and pin the CLI independently.
+Use [mdtheme](https://github.com/sebastian-software/mdtheme) for shared README
+branding. Keep authored content in `README.md.src`, rendering inputs in
+`mdtheme.yaml`, and the generated `README.md` committed. Select the shared theme
+revision explicitly and pin the CLI independently.
 
 Offer `readme:write` and `readme:check` through the project tool setup. Contributors
 edit the authored source and regenerate; the check detects drift. This separates
@@ -56,5 +57,6 @@ For new projects, use indexed Markdown ADRs under `docs/adr/`. Follow an existin
 project's declared decision lifecycle when updating its records.
 
 Use plain Markdown while it serves the reader. When a product needs a
-searchable documentation website, use Ardo. Add the site for a reader need,
-not merely because several contributor documents exist.
+searchable documentation website, use [Ardo](https://github.com/sebastian-software/ardo).
+Add the site for a reader need, not merely because several contributor documents
+exist.

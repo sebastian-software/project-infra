@@ -57,5 +57,6 @@ or configuration framework in project-infra.
 
 - [Distribution RFC](../rfcs/0002-project-scoped-distribution.md)
 - [Hooks RFC](../rfcs/0003-optional-hooks-and-automation.md)
+- [Selected packaging, ADR-0009](0009-distribute-a-self-contained-agent-skill.md)
 - [Agent Skills specification](https://agentskills.io/specification)
 - [Dalo portable plugins and agent stacks](https://github.com/sebastian-software/dalo/blob/main/docs/rfcs/0005-portable-plugins-and-agent-stacks.md)

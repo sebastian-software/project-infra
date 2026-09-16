@@ -2,7 +2,7 @@
 
 - Status: draft
 - Date: 2026-09-16
-- Decision: [ADR-0005](../adr/0005-separate-portable-content-from-integrations.md)
+- Related decision: [ADR-0005](../adr/0005-separate-portable-content-from-integrations.md)
 
 ## Problem
 

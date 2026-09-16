@@ -2,7 +2,7 @@
 
 - Status: draft
 - Date: 2026-09-16
-- Decisions: [ADR-0001](../adr/0001-create-project-infra-as-a-separate-project.md),
+- Related decisions: [ADR-0001](../adr/0001-create-project-infra-as-a-separate-project.md),
   [ADR-0004](../adr/0004-use-native-metadata-and-existing-owners.md)
 
 ## Problem

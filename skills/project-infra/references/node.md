@@ -8,14 +8,14 @@ and documentation sites.
 Keep source tooling within this ecosystem to reduce overlapping configuration
 and make development, tests, and production builds work from compatible inputs.
 
-| Responsibility                     | Tool                                                             | Purpose                                                                                    |
-| ---------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Formatting                         | oxfmt                                                            | Fast, consistent formatting with one project-wide contract                                 |
-| Source linting                     | OxLint; ESLint is also supported during the TypeScript migration | Catch code defects while retaining required TypeScript diagnostics                         |
-| Application development and builds | Vite, through the framework's integration where applicable       | Share module resolution, transforms, and plugins between development and builds            |
-| Package and CLI bundles            | tsdown                                                           | Produce distributable JavaScript and type declarations with package-oriented configuration |
-| Tests                              | Vitest                                                           | Reuse the Vite transformation and configuration model for tests                            |
-| Type checking                      | TypeScript                                                       | Check the project's type contracts independently of code transformation                    |
+| Responsibility                     | Tool                                                                    | Purpose                                                                                    |
+| ---------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Formatting                         | oxfmt                                                                   | Fast, consistent formatting with one project-wide contract                                 |
+| Source linting                     | OxLint; ESLint stays supported while the OxLint migration is incomplete | Catch code defects while retaining required TypeScript diagnostics                         |
+| Application development and builds | Vite, through the framework's integration where applicable              | Share module resolution, transforms, and plugins between development and builds            |
+| Package and CLI bundles            | tsdown                                                                  | Produce distributable JavaScript and type declarations with package-oriented configuration |
+| Tests                              | Vitest                                                                  | Reuse the Vite transformation and configuration model for tests                            |
+| Type checking                      | TypeScript                                                              | Check the project's type contracts independently of code transformation                    |
 
 Vite and tsdown use Rolldown and Oxc for bundling and transformation. Use these
 integrations directly; add a separate compiler or bundler step only for a
@@ -41,8 +41,8 @@ packages. A tooling update must not silently raise that floor. Check the current
 a version.
 
 Limit build-script permissions and dependency overrides to actual needs. Keep
-compatibility-sensitive tool versions together, following the shared package's
-supported matrix. Dependency automation is covered in [CI and releases](ci-and-releases.md).
+compatibility-sensitive tool versions together, following the lint configuration
+package's supported matrix. Dependency automation is covered in [CI and releases](ci-and-releases.md).
 
 ## Formatting and linting
 
@@ -50,8 +50,10 @@ Use oxfmt with its defaults. Provide `format` and `format:check`. Keep necessary
 file exclusions local and format generated content in its generator. Separate
 large formatting-only changes from behavioral changes so reviews stay readable.
 
-OxLint and ESLint are both supported. Use the shared `oxlint-config-setup` or
-`eslint-config-setup` configuration for the chosen path. Prefer OxLint for
+OxLint and ESLint are both supported. Use the shared
+[oxlint-config-setup](https://github.com/sebastian-software/oxlint-config-setup)
+or [eslint-config-setup](https://github.com/sebastian-software/eslint-config-setup)
+configuration for the chosen path. Prefer OxLint for
 checks already covered; retain ESLint's required TypeScript checks while the
 organization's migration is incomplete. Adopting these standards does not require
 finishing that migration in the same change.

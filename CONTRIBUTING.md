@@ -24,6 +24,10 @@ standards. Keep the entry point short and load profiles only when applicable.
 All relative links in the installed package must resolve within that directory.
 Keep installation instructions and design records outside it.
 
+The pinned Skills CLI version appears in the README, this guide, `SKILL.md`, and
+the installation guide. Bump every occurrence together and treat the bump as an
+installer change.
+
 For a local trial, run the following from a disposable Git repository, replacing
 the path with your project-infra checkout:
 

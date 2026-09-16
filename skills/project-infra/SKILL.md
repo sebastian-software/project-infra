@@ -14,7 +14,8 @@ coherent change and verify it through the project's own checks.
 Identify the working repository, its instructions, and the project-local copy of
 this skill. Read native manifests, workspace declarations, contributor docs, CI,
 and existing changes to distinguish product code from fixtures and generated
-content. A mixed repository can need several profiles.
+content. A mixed repository can need several profiles; a repository without
+Node.js or Rust code still uses the common, CI, and documentation guidance.
 
 Read only the references relevant to the requested work:
 
