@@ -1,0 +1,16 @@
+# Workspace root. Members opt into the shared package metadata and lint policy.
+[workspace]
+members = ["crates/*"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.85"
+
+[workspace.lints.rust]
+# Safe-Rust default. Where native integration needs unsafe code, replace this
+# with `unsafe_op_in_unsafe_fn = "deny"` and document each safety argument.
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

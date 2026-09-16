@@ -1,0 +1,51 @@
+# .github/workflows/check.yml
+# Keep the jobs that apply to the project. Replace every <full-commit-sha> with
+# the commit of the release named in the comment and keep that comment current.
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      - uses: pnpm/action-setup@<full-commit-sha> # vX.Y.Z
+      - uses: actions/setup-node@<full-commit-sha> # vX.Y.Z
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      # rustup on the runner installs the toolchain from rust-toolchain.toml.
+      - run: cargo install cargo-deny --locked
+      - run: scripts/check.sh
+
+  # Stable name for branch protection. Runs after failures and treats a
+  # skipped or cancelled job as a failure.
+  gate:
+    needs: [node, rust]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          test "${{ needs.node.result }}" = "success"
+          test "${{ needs.rust.result }}" = "success"

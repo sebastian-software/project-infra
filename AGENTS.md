@@ -3,10 +3,10 @@
 Read [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md) first.
 The [ADR index](docs/adr/README.md) identifies accepted decisions; the
 [RFC index](docs/rfcs/README.md) identifies proposals and open questions.
-The [convention pages](docs/conventions/README.md) own current infrastructure
-defaults. Apply their scope and exception rules. Explain tool choices through
-their technical purpose; keep repository inventories and obsolete alternatives
-out of current guidance.
+The skill references, indexed in the [convention pages](docs/conventions/README.md),
+own current infrastructure defaults. Apply their scope and exception rules.
+Explain tool choices through their technical purpose; keep repository
+inventories and obsolete alternatives out of current guidance.
 
 Keep repository content in US English. Follow the documented record lifecycle
 and verification process. The installed package is `skills/project-infra/`;

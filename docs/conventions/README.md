@@ -12,6 +12,10 @@ when refining a standard.
 | Automation and distribution    | [CI and releases](../../skills/project-infra/references/ci-and-releases.md)           |
 | Contributor and agent guidance | [Documentation](../../skills/project-infra/references/documentation.md)               |
 
+The references link to configuration excerpts under
+[`assets/`](../../skills/project-infra/assets/); each excerpt shows the shape of
+a setting, not a complete project.
+
 The [skill](../../skills/project-infra/SKILL.md) explains scope selection and
 handling justified differences. See [installation and use](../installation.md)
 to apply the guidance, or [contributing](../../CONTRIBUTING.md) to improve it.

@@ -15,9 +15,10 @@ package. Add a runtime only when the project needs it.
 ## Provide one local verification path
 
 Provide one documented complete local gate. Use `pnpm check` for a new Node
-project and `scripts/check.sh` with native Cargo commands for a new Rust project.
-Keep an established, equally clear entry point when renaming it would only add
-churn.
+project and `scripts/check.sh` with native Cargo commands for a new Rust project;
+the [package scripts](../assets/node/package.json) and
+[check script](../assets/rust/scripts/check.sh) excerpts show the shape. Keep an
+established, equally clear entry point when renaming it would only add churn.
 
 Local work and CI must share check implementations so a contributor can
 reproduce failures without reverse-engineering a workflow. Keep checks
@@ -35,8 +36,10 @@ Declare package-manager versions and supported runtimes in native manifests.
 Commit lockfiles and use them in CI so dependency resolution is reviewable and
 repeatable.
 
-Use mise for additional shared CLI tools such as mdtheme, with project-local
-configuration and a committed lockfile. Document the installation step and use
+Use [mise](https://mise.jdx.dev) for additional shared CLI tools such as
+[mdtheme](https://github.com/sebastian-software/mdtheme), with project-local
+configuration such as the [mise.toml excerpt](../assets/common/mise.toml) and a
+committed lockfile. Document the installation step and use
 the selected tool without silently falling back to a different global version.
 Keep Cargo and package-manager metadata in their native locations.
 

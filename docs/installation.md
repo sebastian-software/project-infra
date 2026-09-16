@@ -14,6 +14,7 @@ symlink mode produces:
 .agents/skills/project-infra/
   SKILL.md
   agents/openai.yaml
+  assets/
   references/
 .claude/skills/project-infra -> ../../.agents/skills/project-infra
 skills-lock.json
@@ -110,7 +111,7 @@ creates separate app copies. Validate installation and updates on that platform
 before committing a different layout.
 
 Hooks and standing-instruction installation remain an
-[optional design topic](rfcs/0003-optional-hooks-and-automation.md).
+[optional design topic](rfcs/0001-optional-hooks-and-automation.md).
 
 Source documentation: [Skills CLI](https://github.com/vercel-labs/skills),
 [Codex skill discovery](https://learn.chatgpt.com/docs/build-skills), and

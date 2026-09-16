@@ -1,0 +1,6 @@
+# Workspace membership and package-manager settings in their native location.
+packages:
+  - packages/*
+
+# Dependencies allowed to run install scripts. pnpm 10 and newer skip the rest.
+onlyBuiltDependencies: []
