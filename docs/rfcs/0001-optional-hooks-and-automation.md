@@ -1,8 +1,8 @@
-# RFC-0003: Optional hooks and automation
+# RFC-0001: Optional hooks and automation
 
 - Status: draft
 - Date: 2026-09-16
-- Related decision: [ADR-0005](../adr/0005-separate-portable-content-from-integrations.md)
+- Related decision: [ADR-0004](../adr/0004-keep-the-portable-core-separate-from-app-integrations.md)
 
 ## Problem
 
@@ -11,8 +11,8 @@ forget to update or invoke it. Hooks could provide a useful automatic trigger.
 The trigger should not make every commit slow, repeatedly rewrite the same
 project, or duplicate the actual convention logic.
 
-The session expressed interest in hooks, not a decision to enable a particular
-event or schedule. No automation is installed by this initial repository.
+Interest in hooks exists, but no event or schedule has been selected, and this
+repository installs no automation.
 
 ## Proposed boundary
 
@@ -80,6 +80,6 @@ configuration file was written.
 
 ## References
 
-- [Distribution proposal](0002-project-scoped-distribution.md)
+- [Distribution decision](../adr/0003-distribute-a-self-contained-skill-at-project-scope.md)
 - [Git hooks](https://git-scm.com/docs/githooks)
 - [Claude Code hooks](https://code.claude.com/docs/en/hooks#sessionstart)

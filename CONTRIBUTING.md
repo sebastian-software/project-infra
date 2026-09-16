@@ -19,8 +19,10 @@ distinct from the behavior already implemented.
 
 ## Change the skill
 
-Edit `skills/project-infra/SKILL.md` for the workflow and its `references/` for
-standards. Keep the entry point short and load profiles only when applicable.
+Edit `skills/project-infra/SKILL.md` for the workflow, its `references/` for
+standards, and its `assets/` for configuration excerpts. Keep the entry point
+short and load profiles only when applicable. Keep each excerpt minimal, valid
+for its native parser, and linked from the reference that explains it.
 All relative links in the installed package must resolve within that directory.
 Keep installation instructions and design records outside it.
 
@@ -44,14 +46,36 @@ update, relative links after a clean clone, and removal. Preserve a separate
 skill and local project instructions in the fixture to check update scope.
 
 Use the existing Agent Skills validator or the skill-creator validator when
-available. Check frontmatter, links, and discovery; a successful parse does not
-prove the instructions make good decisions. Review scope selection and conflicts
-using the [workflow scenarios](docs/rfcs/0001-contextual-project-updates.md#useful-review-scenarios).
+available. Check frontmatter, links, and discovery, and parse each configuration
+excerpt with its native tool; a successful parse does not prove the instructions
+make good decisions.
+
+Review an instruction change for whether it is necessary, unambiguous, correctly
+scoped, consistent with existing instructions, and located at its source of
+truth. Look for conflicts between general defaults and language-specific
+requirements, and for duplicates with slightly different wording. Read the
+change against concrete scenarios:
+
+- An established check command can stay when it provides the complete,
+  documented gate; renaming alone adds churn.
+- A Rust workspace with Node bindings needs both profiles, scoped to the actual
+  packages.
+- Updating a CI check must preserve custom deployment dependencies and required
+  check names.
+- A generated README needs changes to its authored input and regeneration.
+- An aligned project can finish without a diff.
+
+When a real run fails, identify whether the cause is unclear content, incorrect
+detection, an installer problem, or an agent error, and rewrite or remove the
+relevant instruction. Do not append an exception to the skill for every isolated
+incident.
 
 ## Write and review a record
 
 - Use US English and concrete project terminology.
-- Give each durable decision one numbered ADR under `docs/adr/`.
+- Give each durable decision one numbered ADR under `docs/adr/`. ADRs describe
+  what project-infra is and how it is distributed and maintained; they link to
+  the skill instead of restating its conventions.
 - Use a numbered RFC under `docs/rfcs/` for an implementation proposal with open
   questions. Draft examples must be labeled as proposals, not working interfaces.
 - Keep rationale in ADRs and implementation details in their owning RFC or,
@@ -63,9 +87,9 @@ ADR statuses are `proposed`, `accepted`, `rejected`, `deprecated`, and
 links in place; use a successor ADR for a semantic change and link both records.
 
 RFCs begin as `draft` and can evolve during discussion. When a proposal is
-resolved, mark it `resolved`, record the decision in an ADR, and link it from the
-RFC. A draft RFC is not authorization to implement it, run automation, or migrate
-other repositories.
+resolved, record the decision in an ADR and remove the RFC, or mark it `resolved`
+while other records still link to it. A draft RFC is not authorization to
+implement it, run automation, or migrate other repositories.
 
 ## Review documentation changes
 
