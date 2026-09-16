@@ -14,6 +14,7 @@ implementation is pending unless the repository demonstrates otherwise.
 | [0006](0006-prioritize-instruction-quality.md)              | Prioritize instruction quality and native checks          | accepted |
 | [0007](0007-make-documentation-part-of-the-product.md)      | Make accessible documentation part of the product         | accepted |
 | [0008](0008-adopt-an-iterative-standards-baseline.md)       | Adopt an initial baseline and iterate through project use | accepted |
+| [0009](0009-distribute-a-self-contained-agent-skill.md)     | Distribute a self-contained skill with the Skills CLI     | accepted |
 
 See [the contribution guide](../../CONTRIBUTING.md) for the record lifecycle and
 [the RFCs](../rfcs/README.md) for implementation proposals.
