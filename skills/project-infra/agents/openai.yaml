@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Infra"
+  short_description: "Maintain project tooling, CI, releases, and docs"
+  default_prompt: "Use $project-infra to bring this project up to date, update the affected documentation, and verify the changes."

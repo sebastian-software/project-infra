@@ -9,6 +9,7 @@ their technical purpose; keep repository inventories and obsolete alternatives
 out of current guidance.
 
 Keep repository content in US English. Follow the documented record lifecycle
-and verification process. This repository contains standards and design
-documents; do not describe proposed installation commands or integrations as
-implemented features.
+and verification process. The installed package is `skills/project-infra/`;
+keep its local references inside that directory. This root `AGENTS.md` guides
+contributors and is not part of the installed package. Describe proposed
+integrations as proposals until their behavior has been verified.

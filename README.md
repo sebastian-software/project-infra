@@ -1,46 +1,50 @@
 # project-infra
 
-**Shared project infrastructure conventions for Sebastian Software.**
+**A project-local skill for maintaining Sebastian Software project infrastructure.**
 
-`project-infra` defines how a project's core infrastructure should be organized:
-CI, development tools, releases, repository configuration, and the documentation
-needed to use them. An agent applies these conventions in the context of the
-project, including its existing customizations.
+Ask your agent to bring tooling, CI, releases, and contributor documentation up
+to date. The skill supplies the [shared conventions](docs/conventions/README.md);
+the agent adapts them to the project's structure and compatibility requirements.
 
-## Current status
+## Install and use
 
-This repository contains an [initial set of infrastructure standards](docs/conventions/README.md),
-decisions, and implementation proposals. The standards explain the supported
-tools, their responsibilities, and the reasons for using them. An installable
-skill, plugin, CLI, and working hook integration are still pending.
+From the consuming repository's root, with Git and Node.js 22.20.0 or newer:
 
-The direction is to install the package **inside each consuming project**, update
-that local installation, and ask the agent to bring the project up to date.
-The package may combine a skill, reference files, standing instructions, and
-optional hooks or agent definitions. The distribution format is still open.
+```sh
+npx skills@1.5.26 add sebastian-software/project-infra \
+  --skill project-infra --agent codex claude-code --yes
+```
 
-Projects adopt the guidance through focused updates that preserve their
-compatibility contracts and include the affected contributor documentation.
+Choose the apps you use in `--agent`. Commit the installed skill, app links, and
+`skills-lock.json` so the same instructions travel with every clone. Then open a
+fresh agent session in that project:
 
-## Start reading
+**Codex**
 
-| If you want to understand...                                | Read                                                                         |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Which infrastructure defaults to apply                      | [Current standards](docs/conventions/README.md)                              |
-| What was decided, and why                                   | [Architecture decisions](docs/adr/README.md)                                 |
-| How the proposed system could work                          | [RFCs and open questions](docs/rfcs/README.md)                               |
-| What an agent would do in a project                         | [The skill workflow](docs/rfcs/0001-contextual-project-updates.md)           |
-| Installation, updates, and app support                      | [Project-scoped distribution](docs/rfcs/0002-project-scoped-distribution.md) |
-| Automatic triggers                                          | [Optional hooks](docs/rfcs/0003-optional-hooks-and-automation.md)            |
-| How to adopt the standards and divide tool responsibilities | [Adoption and tool ownership](docs/rfcs/0004-migration-and-ecosystem.md)     |
-| Keeping the instructions clear and consistent               | [Authoring and review](docs/rfcs/0005-authoring-and-review.md)               |
+```text
+Use $project-infra to bring this project up to date. Update the affected
+documentation and verify the changes.
+```
 
-An **ADR** records an architectural decision and its rationale. An **RFC** is a
-request for comments on a possible implementation. An accepted ADR means the
-direction was agreed; it does not mean the implementation already exists.
+**Claude Code**
 
-## Contribute
+```text
+/project-infra Bring this project up to date. Update the affected documentation
+and verify the changes.
+```
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing a decision or turning a
-proposal into an implementation. Keep the project lightweight and write in
-US English.
+The first version is ready for project trials. Review the resulting diff and
+native checks. Installing or updating the instructions does not apply them.
+
+See the [installation guide](docs/installation.md) for updates, committed files,
+app discovery, customization, and removal.
+
+## Read and contribute
+
+| Task                                           | Read                                                |
+| ---------------------------------------------- | --------------------------------------------------- |
+| Understand the workflow                        | [Skill instructions](skills/project-infra/SKILL.md) |
+| Inspect the supported defaults                 | [Current standards](docs/conventions/README.md)     |
+| Understand architectural choices               | [ADRs](docs/adr/README.md)                          |
+| Explore open design questions, including hooks | [RFCs](docs/rfcs/README.md)                         |
+| Improve the skill or documentation             | [Contributing](CONTRIBUTING.md)                     |

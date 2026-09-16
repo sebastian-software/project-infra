@@ -55,7 +55,7 @@ the core skill for every isolated incident.
 
 ## Mechanical checks worth adding when needed
 
-- Validate skill metadata once an actual skill exists.
+- Validate skill metadata when it changes.
 - Check local references and links.
 - Validate structured examples with their native parser or tool.
 - Exercise helper scripts against their concrete contracts if scripts exist.
