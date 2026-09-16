@@ -9,9 +9,11 @@ project, including its existing customizations.
 
 ## Current status
 
-This repository starts with a design brain dump from the founding discussion,
-recorded on September 16, 2026. It contains decisions and proposals, not an
-installable skill, plugin, CLI, or working hook integration.
+This repository contains an [initial set of infrastructure standards](docs/conventions/README.md),
+decisions, and implementation proposals. The standards were informed by a survey
+of existing projects on September 16, 2026. They provide defaults to apply and
+improve through project use. An installable skill, plugin, CLI, and working hook
+integration are still pending.
 
 The direction is to install the package **inside each consuming project**, update
 that local installation, and ask the agent to bring the project up to date.
@@ -25,15 +27,17 @@ until they are explicitly migrated.
 
 ## Start reading
 
-| If you want to understand...                    | Read                                                                            |
-| ----------------------------------------------- | ------------------------------------------------------------------------------- |
-| What was decided, and why                       | [Architecture decisions](docs/adr/README.md)                                    |
-| How the proposed system could work              | [RFCs and open questions](docs/rfcs/README.md)                                  |
-| What an agent would do in a project             | [The skill workflow](docs/rfcs/0001-contextual-project-updates.md)              |
-| Installation, updates, and app support          | [Project-scoped distribution](docs/rfcs/0002-project-scoped-distribution.md)    |
-| Automatic triggers                              | [Optional hooks](docs/rfcs/0003-optional-hooks-and-automation.md)               |
-| The old system, audit PRs, and gradual adoption | [Migration and ecosystem boundaries](docs/rfcs/0004-migration-and-ecosystem.md) |
-| Keeping the instructions clear and consistent   | [Authoring and review](docs/rfcs/0005-authoring-and-review.md)                  |
+| If you want to understand...                    | Read                                                                                |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Which infrastructure defaults to apply          | [Current standards](docs/conventions/README.md)                                     |
+| Where those defaults came from and what to try  | [Workspace survey and pilots](docs/rfcs/0006-conventions-from-existing-projects.md) |
+| What was decided, and why                       | [Architecture decisions](docs/adr/README.md)                                        |
+| How the proposed system could work              | [RFCs and open questions](docs/rfcs/README.md)                                      |
+| What an agent would do in a project             | [The skill workflow](docs/rfcs/0001-contextual-project-updates.md)                  |
+| Installation, updates, and app support          | [Project-scoped distribution](docs/rfcs/0002-project-scoped-distribution.md)        |
+| Automatic triggers                              | [Optional hooks](docs/rfcs/0003-optional-hooks-and-automation.md)                   |
+| The old system, audit PRs, and gradual adoption | [Migration and ecosystem boundaries](docs/rfcs/0004-migration-and-ecosystem.md)     |
+| Keeping the instructions clear and consistent   | [Authoring and review](docs/rfcs/0005-authoring-and-review.md)                      |
 
 An **ADR** records an architectural decision and its rationale. An **RFC** is a
 request for comments on a possible implementation. An accepted ADR means the

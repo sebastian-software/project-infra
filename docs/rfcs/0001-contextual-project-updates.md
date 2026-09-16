@@ -37,6 +37,11 @@ hosts; a remote's mere presence does not settle every platform-specific choice.
 
 ### 2. Select relevant conventions
 
+The [current standards](../conventions/README.md) now supply the initial defaults,
+under [ADR-0008](../adr/0008-adopt-an-iterative-standards-baseline.md). Apply them
+unless a concrete requirement justifies an exception. The source survey records
+evidence separately from the rules an update should follow.
+
 Use capabilities that can coexist, rather than assigning exactly one project
 type to the entire repository:
 
@@ -113,13 +118,11 @@ These are review scenarios, not a commitment to build an agent benchmark suite.
 
 ## Open questions
 
-1. Which common, Node.js, and Rust conventions are essential for the first pilot?
-2. Where should a consumer document a deliberate exception when configuration
-   alone cannot explain it?
-3. Which conventions are requirements and which are recommended defaults?
-4. How much uncertainty can a run resolve from the repository before it needs
+1. Does the first pilot reveal missing applicability or exception guidance in
+   the selected standards?
+2. How much uncertainty can a run resolve from the repository before it needs
    maintainer input?
-5. Is a separate audit-only invocation useful, or is one task with an explicit
+3. Is a separate audit-only invocation useful, or is one task with an explicit
    requested outcome sufficient?
 
 ## Related proposals

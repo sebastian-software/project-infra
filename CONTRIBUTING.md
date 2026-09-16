@@ -1,8 +1,20 @@
 # Contributing
 
-This repository currently contains design documents. Read the
+This repository currently contains standards and design documents. Read the
 [ADR index](docs/adr/README.md) for constraints and the
 [RFC index](docs/rfcs/README.md) for unresolved implementation questions.
+
+## Improve a standard
+
+The [convention pages](docs/conventions/README.md) own the current defaults.
+Refine them in place when project trials reveal a better choice. Explain the
+reason, applicability, and verification path; retain concrete exceptions and
+link to shared tools instead of copying their policy catalogs. Historical
+source snapshots remain evidence of the survey, not a live compliance report.
+
+Routine convention changes do not need their own ADR. Record a successor ADR
+when changing an accepted architectural direction. Keep draft pilot or
+installation proposals distinct from the standards already selected for use.
 
 ## Write and review a record
 
