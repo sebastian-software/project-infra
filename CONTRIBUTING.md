@@ -8,9 +8,10 @@ This repository currently contains standards and design documents. Read the
 
 The [convention pages](docs/conventions/README.md) own the current defaults.
 Refine them in place when project trials reveal a better choice. Explain the
-reason, applicability, and verification path; retain concrete exceptions and
-link to shared tools instead of copying their policy catalogs. Historical
-source snapshots remain evidence of the survey, not a live compliance report.
+technical reason, applicability, and verification path; retain concrete
+exceptions and link to shared tools instead of copying their policy catalogs.
+Write the supported path. Do not justify a choice by listing projects that used
+it, or preserve retired tools as competing recommendations.
 
 Routine convention changes do not need their own ADR. Record a successor ADR
 when changing an accepted architectural direction. Keep draft pilot or
@@ -47,5 +48,4 @@ Before committing:
 
 There is no package installation, build, documentation generator, or agent
 evaluation suite in this initial repository. Add tooling only when a concrete
-need justifies its maintenance cost. Do not bootstrap the legacy standards
-machinery merely to validate these Markdown files.
+need justifies its maintenance cost.

@@ -5,13 +5,10 @@
 
 ## Context
 
-A workspace survey found shared infrastructure patterns alongside differences in
-tool generations, supported runtimes, and product requirements. Merely listing
-those patterns as candidates would leave an agent without a default to apply.
-
-The follow-up decision was to standardize an initial baseline, try it in
-projects, and improve it from the results. Complete agreement across existing
-repositories is not a prerequisite for choosing a direction.
+An agent needs concrete defaults to make infrastructure updates consistent and
+reviewable. Clear choices reduce repeated setup decisions; project requirements
+still determine where each choice applies. Trying a small baseline in real
+projects exposes missing guidance and unnecessary work.
 
 ## Decision
 
@@ -26,9 +23,8 @@ Existing configuration alone is not an exemption. Preserve and explain actual
 compatibility contracts, native integration requirements, and deliberate product
 decisions. Use local configuration or existing project documents for exceptions.
 
-Evidence informs the defaults without making every observed setting a standard.
-Keep source snapshots separate from current guidance. Do not copy shared tools'
-rule catalogs, version matrices, or branding data into project-infra.
+Explain defaults through their technical purpose and applicability. Do not copy
+shared tools' rule catalogs, version matrices, or branding data into project-infra.
 
 Try coherent changes in a small number of representative repositories, inspect
 the resulting diffs and native checks, and feed failures back into the affected
@@ -51,4 +47,4 @@ setting.
 
 - [Current-state reconciliation](0002-reconcile-current-project-state.md)
 - [Instruction quality](0006-prioritize-instruction-quality.md)
-- [Workspace evidence and pilot proposal](../rfcs/0006-conventions-from-existing-projects.md)
+- [Adoption and tool ownership](../rfcs/0004-migration-and-ecosystem.md)

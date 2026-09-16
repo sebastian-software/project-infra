@@ -39,8 +39,8 @@ hosts; a remote's mere presence does not settle every platform-specific choice.
 
 The [current standards](../conventions/README.md) now supply the initial defaults,
 under [ADR-0008](../adr/0008-adopt-an-iterative-standards-baseline.md). Apply them
-unless a concrete requirement justifies an exception. The source survey records
-evidence separately from the rules an update should follow.
+unless a concrete requirement justifies an exception. Each profile explains the
+purpose and applicability of its tools.
 
 Use capabilities that can coexist, rather than assigning exactly one project
 type to the entire repository:
