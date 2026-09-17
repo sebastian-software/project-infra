@@ -197,9 +197,9 @@ Exercise the installed artifact at the boundary the consumer uses.
 
 | Artifact              | Check                                                                                                                                                         |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| npm package           | Install the packed tarball in a clean consumer; check exports, declarations, and promised module formats                                                      |
+| npm package           | [Pack and install in a clean consumer](node.md#verify-the-development-and-consumer-paths): archive against `files`, every entry point, each export condition  |
 | Rust crate            | Package, then [test and install the packaged result](rust.md#share-the-local-and-ci-checks); verify the [API contract](rust.md#share-the-local-and-ci-checks) |
-| Native Node package   | Check wrapper/native versions, platform selection, and loading a packaged binding                                                                             |
+| Native Node package   | Check wrapper and sidecar versions, platform selection, and a packed binding loading in a [clean consumer](node.md#verify-the-development-and-consumer-paths) |
 | Downloaded CLI        | Smoke-test the binary and verify published checksums                                                                                                          |
 | Homebrew formula      | Validate the formula and install/test its referenced artifact                                                                                                 |
 | Git-installed package | Verify the Git consumer path and keep required built files committed and current                                                                              |

@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run pack:check",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "tsdown",
+    "pack:check": "node scripts/verify-pack.mjs",
     "readme:write": "mise run readme:write",
     "readme:check": "mise run readme:check"
   },

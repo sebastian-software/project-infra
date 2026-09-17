@@ -117,5 +117,58 @@ file is the place for DOM methods jsdom does not implement, such as
 `Element.prototype.scrollIntoView`.
 
 From a clean install, the project gate should cover formatting, lint, types,
-tests, and the build. A successful source build is not sufficient for a published
-package: also run the relevant [consumer-artifact checks](ci-and-releases.md#verify-the-artifact-consumers-receive).
+tests, and the build. A source build that succeeds says nothing about the
+archive a consumer installs, so a publishable package runs `pack:check` after
+`build`, as the [package scripts](../assets/node/package.json) excerpt shows.
+The [verify-pack script](../assets/node/scripts/verify-pack.mjs) packs the
+package, compares the archive against the entries in `files` and every path
+`main`, `types`, `bin`, and `exports` advertise, installs that archive alone in
+an empty consumer, and loads every subpath from there: through `import`, and
+through `require` wherever a `require` condition promises a CommonJS
+resolution. It also checks that the declarations a condition names are
+installed, because type resolution stops at the first matching `types`
+condition and never reports the file it would have used. Pass the package
+directory as an argument when the script runs from a workspace root. The other
+[artifact checks](ci-and-releases.md#verify-the-artifact-consumers-receive)
+cover the remaining distribution shapes.
+
+Copy every license text into each publishable package of a dual-licensed
+workspace and list the files in `files`. `pnpm publish` embeds only a
+workspace-root file whose name matches `LICEN{S,C}E{,.*}`, and npm
+force-includes only `license{,.*}` from the package directory itself, so a
+package declaring `MIT OR Apache-2.0` publishes with neither text unless both
+are in the package. Copy them from the repository root in a build step so a new
+package cannot be added without them, and let the packed-artifact check fail the
+package that is still missing one.
+
+Prove in CI that the lockfile still describes the manifests. A frozen install
+shows only that the committed lockfile can satisfy them, and it never rewrites
+the file, so a lockfile that installs while no longer matching a fresh
+resolution still passes. That gap opens when a package-manager major changes the
+lockfile format, or when workspace settings such as overrides and allowed build
+scripts change. Run `pnpm install --lockfile-only` and then
+`git diff --exit-code pnpm-lock.yaml`: the working tree stays unchanged exactly
+when the committed lockfile is what the current manifests, settings, and pnpm
+version produce.
+
+Hold the declared runtime floor in CI as well. A matrix lane installs the newest
+release of its major, so no lane runs the floor `engines` declares, and a
+tooling update that needs a newer runtime raises the consumer's floor without
+touching that field. Add a lane that pins the runtime instead: install and
+build on the version the workspace's `engines` floor names, then switch to the
+published package's `engines` floor and run that package's tests against the
+build output.
+The two floors differ whenever the toolchain needs a newer runtime than the
+package it produces, and the published floor is the one a consumer reads. A
+dependency that outgrows the build floor then fails the build step, and output
+that relies on a newer runtime API fails the test step. The
+[workflow excerpt](../assets/ci/check.yml) shows a single Node job; the floor
+lane is a second job with the same install step and those two pinned runtime
+setups.
+
+Run the version matrix over the supported majors for the steps that are cheap
+and runtime-sensitive, such as install, lint, type check, and unit tests, and
+keep the expensive ones on one lane: browser downloads, end-to-end runs, site
+builds, and example matrices exercise the same code on every major and pay their
+full cost again on each. Differences between majors surface in the cheap steps
+first, as the Web Storage globals above do.
