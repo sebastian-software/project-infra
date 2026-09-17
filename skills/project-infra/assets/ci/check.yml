@@ -38,10 +38,24 @@ jobs:
       - run: cargo install cargo-deny --locked
       - run: scripts/check.sh
 
+  # Only for a repository with a generated README. The action installs the
+  # generator version recorded in the committed mise.toml and mise.lock;
+  # `version` pins the mise release that reads them.
+  readme:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      - uses: jdx/mise-action@<full-commit-sha> # vX.Y.Z
+        with:
+          version: <mise-version>
+          install_args: --locked
+      - run: mise run readme:check
+
   # Stable name for branch protection. Runs after failures and treats a
   # skipped or cancelled job as a failure.
   gate:
-    needs: [node, rust]
+    needs: [node, rust, readme]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -49,3 +63,4 @@ jobs:
       - run: |
           test "${{ needs.node.result }}" = "success"
           test "${{ needs.rust.result }}" = "success"
+          test "${{ needs.readme.result }}" = "success"

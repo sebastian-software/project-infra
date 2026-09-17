@@ -36,12 +36,16 @@ Declare package-manager versions and supported runtimes in native manifests.
 Commit lockfiles and use them in CI so dependency resolution is reviewable and
 repeatable.
 
-Use [mise](https://mise.jdx.dev) for additional shared CLI tools such as
-[mdtheme](https://github.com/sebastian-software/mdtheme), with project-local
-configuration such as the [mise.toml excerpt](../assets/common/mise.toml) and a
-committed lockfile. Document the installation step and use
-the selected tool without silently falling back to a different global version.
-Keep Cargo and package-manager metadata in their native locations.
+Use [mise](https://mise.jdx.dev) for shared CLI tools the package manager does
+not provide, such as [mdtheme](https://github.com/sebastian-software/mdtheme).
+Pin the exact version in a project-local `mise.toml`, commit the `mise.lock`
+recording each supported platform's archive and checksum, and install with
+`mise install --locked`. Disable automatic installation and system fallback so a
+missing tool fails instead of resolving to whatever the machine provides, and
+expose the tool through mise tasks so every stack shares one command name. The
+[mise.toml excerpt](../assets/common/mise.toml) shows that shape; document the
+installation step in the contributor guide. Keep Cargo and package-manager
+metadata in their native locations.
 
 This gives contributors and agents the same tool selection without depending
 on one developer's machine setup.

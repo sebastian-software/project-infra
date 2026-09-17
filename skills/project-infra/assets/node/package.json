@@ -4,15 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run readme:check && pnpm run test && pnpm run build",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "tsdown",
-    "readme:write": "mdtheme --write",
-    "readme:check": "mdtheme --check"
+    "readme:write": "mise run readme:write",
+    "readme:check": "mise run readme:check"
   },
   "engines": {
     "node": ">=22"
