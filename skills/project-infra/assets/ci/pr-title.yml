@@ -1,0 +1,52 @@
+# .github/workflows/pr-title.yml
+# A squash merge turns the pull request title into the commit on the release
+# branch, so this is where Release Please's input is checked. Replace every
+# <full-commit-sha> with the commit of the release named in the comment and keep
+# that comment current.
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read # the action reads the title and the commit list
+    steps:
+      - uses: amannn/action-semantic-pull-request@<full-commit-sha> # vX.Y.Z
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Every type the release configuration's changelog-sections names,
+          # visible and hidden, plus revert, which a project-specific section
+          # list usually omits. Without that key the release defaults apply; the
+          # action's own default list knows no type this project added.
+          types: |
+            feat
+            fix
+            perf
+            deps
+            docs
+            refactor
+            test
+            build
+            ci
+            chore
+            revert
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: >-
+            The subject "{subject}" of pull request "{title}" must start with a
+            lowercase letter.
+          # GitHub offers the sole commit's message instead of the title when
+          # squashing a one-commit pull request, so that message is checked too.
+          validateSingleCommit: true
