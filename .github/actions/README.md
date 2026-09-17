@@ -1,9 +1,10 @@
 # Shared composite actions
 
-Five composite actions that the organization's release and check workflows
-would otherwise reimplement: crates.io retry loops, napi platform matrices, an
-action-pin checker, and a workflow-hygiene checker. They are ordinary actions in
-this repository, so consumers reference them by path and commit SHA:
+Six composite actions that the organization's release and check workflows would
+otherwise reimplement: crates.io retry loops, napi platform matrices, the
+lifecycle of a tracking issue, an action-pin checker, and a workflow-hygiene
+checker. They are ordinary actions in this repository, so consumers reference
+them by path and commit SHA:
 
 ```yaml
 - uses: sebastian-software/project-infra/.github/actions/publish-crates@<sha> # v0.0.0
@@ -127,6 +128,60 @@ Naming is derived, never written down twice (decision D7 of the family audit):
 - addon file — `<binary>.<id>.node`, the `@napi-rs/cli` default, where
   `<binary>` is the package name without its scope;
 - CI artifact — `native-<id>`.
+
+## `open-or-refresh-issue`
+
+Keeps one open issue per tracked condition: opens it on the first failing run,
+refreshes it in place on every later one, and closes it with a comment once the
+condition clears. A scheduled workflow has no pull request to report on, so
+without this its failures exist only in the run list.
+
+| Input           | Default               | Meaning                                                        |
+| --------------- | --------------------- | -------------------------------------------------------------- |
+| `title`         | —                     | Issue title, written on every create and refresh               |
+| `label`         | —                     | Label that scopes the search and is applied on create          |
+| `body-file`     | `""`                  | Report that becomes the body; this is the open-or-refresh mode |
+| `close-comment` | `""`                  | Comment to close every match with; this is the other mode      |
+| `marker`        | `""`                  | Identifier written into an HTML comment at the top of the body |
+| `token`         | `${{ github.token }}` | Token the GitHub CLI authenticates with                        |
+
+Outputs: `issue-url` (empty when nothing matched) and `action`, one of
+`created`, `refreshed`, `closed`, and `none`.
+
+```yaml
+- uses: sebastian-software/project-infra/.github/actions/open-or-refresh-issue@<sha> # v0.0.0
+  with:
+    title: "chore(deps): dependency audit findings"
+    label: dependencies
+    marker: dependency-audit
+    body-file: issue-body.md
+```
+
+The job needs `permissions: issues: write`. Give it to the reporting job alone,
+not to the job that ran the failing work. Exactly one of `body-file` and
+`close-comment` is given; passing both or neither fails the step rather than
+guessing which was meant.
+
+Which issue counts as the same one is the whole point:
+
+- the search is `gh issue list --state open --label <label>`, so an unrelated
+  issue that happens to share the title is never touched. The label has to
+  exist in the repository already — `gh` fails instead of creating it;
+- without `marker`, a match is an exact title, and a reworded title therefore
+  opens a second issue and abandons the first;
+- with `marker`, a match is the comment `<!-- <marker> -->` that the action
+  writes at the top of the body, and the title is rewritten on the issue it
+  finds. That is what makes the title safe to change. A marker containing `<`,
+  `>`, `--`, or a newline is rejected, because it would end the comment and put
+  the identifier in view;
+- when several match, the lowest issue number wins, so a duplicate opened by
+  two runs at once cannot make the next refresh hop between issues. A
+  `close-comment` retires every match, not only that one.
+
+The body reaches `gh` on standard input, so a report as long as an audit log
+cannot hit the command-line length limit. The repository comes from
+`github.repository` rather than from a git remote, so the reporting job needs
+no checkout.
 
 ## `check-action-pins`
 

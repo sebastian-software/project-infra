@@ -25,15 +25,16 @@ cancellation, so an omission fails the workflow's own run.
 
 ## Use the organization's shared actions
 
-Five composite actions carry publishing, platform, and workflow-checking
-behavior that repositories would otherwise reimplement. Reference them by path
-and commit SHA; do not copy them into a repository.
+Six composite actions carry publishing, platform, reporting, and
+workflow-checking behavior that repositories would otherwise reimplement.
+Reference them by path and commit SHA; do not copy them into a repository.
 
 | Action                   | Use it for                                                                                                                                                                            |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `publish-crates`         | Publishing a workspace's crates in dependency order, with an already-published check and index-propagation waits that make a re-run safe                                              |
 | `publish-npm`            | Publishing packages in order with provenance, deriving the dist-tag from the version so a candidate never lands on `latest`                                                           |
 | `napi-matrix`            | The organization's napi platform list and the derived sidecar, artifact, and binary names                                                                                             |
+| `open-or-refresh-issue`  | Reporting a run that has no pull request into one tracking issue: opened once, refreshed in place afterwards, and closed with a comment once the condition clears                     |
 | `check-action-pins`      | Failing a workflow whose `uses:` entries are not full commit SHAs                                                                                                                     |
 | `check-workflow-hygiene` | Failing a workflow whose jobs carry no timeout, whose token scope stays implicit, that leaves superseded pull-request runs going, or whose aggregate gate job is missing or skippable |
 
@@ -73,6 +74,29 @@ specific exceptions. This prevents repository copies from drifting apart.
 Update compatibility-sensitive components together. Check that the shared preset
 covers the selected lint configuration, linter, and type-aware backend. Improve
 the preset or add a narrow consumer rule when a required relationship is missing.
+
+### Audit dependencies on a schedule
+
+An advisory is published against a version that is already in the lockfile, so
+it arrives without a commit and no pull request runs. Run the dependency policy
+check weekly as well: `cargo deny check` for Cargo and
+`pnpm audit --prod --audit-level high` for npm. `--prod` keeps the report to the
+dependencies a consumer installs, and `high` is the level that gets acted on;
+below it the weekly report reopens forever and stops being read.
+
+Keep one advisory source per ecosystem. `cargo deny check` reports advisories
+along with licenses, bans, and sources, so a second advisory-only lane over the
+same graph raises every finding twice and makes one fix wait for two checks.
+
+A scheduled run has no pull request to report on, and a failure that appears
+only in the run list is not read. Report it into a single tracking issue through
+the [`open-or-refresh-issue` action](#use-the-organizations-shared-actions),
+which opens the issue on the first failing run, refreshes that same issue
+afterwards instead of adding another, and closes it with a comment once the
+audit comes back clean. Scope `issues: write` to the reporting job and leave the
+jobs that run the resolvers read-only. The
+[audit workflow excerpt](../assets/ci/audit.yml) shows both ecosystems, the
+captured reports, and that job.
 
 ## Automate versioned releases
 

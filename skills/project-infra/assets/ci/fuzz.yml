@@ -88,7 +88,7 @@ jobs:
           name: fuzz-artifacts-${{ matrix.target }}
           path: fuzz/artifacts/${{ matrix.target }}
           if-no-files-found: ignore
-  # A scheduled failure has no pull request to report on. Add a job that opens
-  # or refreshes a single tracking issue for it, with `issues: write` scoped to
-  # that job, so an overnight crash is visible without reading the run list.
-  # No shared action covers this yet.
+  # A scheduled failure has no pull request to report on. Add a reporting job
+  # that runs the shared `open-or-refresh-issue` action, with `issues: write`
+  # scoped to that job, so an overnight crash is visible without reading the
+  # run list; the audit excerpt shows that job.

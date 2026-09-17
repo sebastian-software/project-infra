@@ -1,0 +1,146 @@
+# .github/workflows/audit.yml
+# The dependency policy check on a schedule, for the advisories that arrive
+# without a commit. Keep the jobs that apply to the project. Replace every
+# <full-commit-sha> with the commit of the release named in the comment and
+# keep that comment current.
+name: Audit
+
+on:
+  schedule:
+    # Weekly, off-hours, at an odd minute: scheduled runs cluster on the hour
+    # and are dropped when the runner queue is saturated.
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Serialized rather than cancelled: two runs reaching the reporting job at
+  # once would each find no tracking issue and each open one.
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  # Each ecosystem audits in its own job with a read-only token, because these
+  # are the jobs that run a resolver over untrusted dependency metadata. Only
+  # the reporting job below can write an issue.
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      outcome: ${{ steps.deny.outcome }}
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      # A prebuilt binary; `cargo install` would compile cargo-deny on every
+      # scheduled run.
+      - uses: taiki-e/install-action@<full-commit-sha> # vX.Y.Z
+        with:
+          tool: cargo-deny
+      # The same command and the same deny.toml as the check workflow.
+      # Advisories are one of the sections it checks, so nothing here needs a
+      # second advisory tool.
+      #
+      # The outcome is what decides whether the tracking issue opens, so it has
+      # to survive into the step result: `continue-on-error` keeps the run
+      # going, while `|| true` inside the step would report success and the
+      # reporting job would never see the finding. The default shell sets
+      # `pipefail`, so `tee` does not hide the exit code either.
+      - id: deny
+        continue-on-error: true
+        run: cargo deny check 2>&1 | tee cargo-deny.log
+      - uses: actions/upload-artifact@<full-commit-sha> # vX.Y.Z
+        with:
+          name: audit-rust
+          path: cargo-deny.log
+
+  node:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      outcome: ${{ steps.audit.outcome }}
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      - uses: pnpm/action-setup@<full-commit-sha> # vX.Y.Z
+      - uses: actions/setup-node@<full-commit-sha> # vX.Y.Z
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # `--prod` keeps the report to the dependencies a consumer installs; a
+      # repository that ships a development tool drops the flag. `high` is the
+      # level that gets acted on: below it the weekly issue reopens forever.
+      - id: audit
+        continue-on-error: true
+        run: pnpm audit --prod --audit-level high 2>&1 | tee pnpm-audit.log
+      - uses: actions/upload-artifact@<full-commit-sha> # vX.Y.Z
+        with:
+          name: audit-node
+          path: pnpm-audit.log
+
+  report:
+    needs: [rust, node]
+    # A failed audit job must not skip the report: a scheduled run nobody reads
+    # is how a broken schedule stays broken.
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    env:
+      # A finding in either ecosystem, or an audit job that never produced an
+      # outcome, both need a person. Drop the ecosystem the project does not
+      # have from `needs:` and from this expression together.
+      FINDINGS: ${{ needs.rust.outputs.outcome != 'success' || needs.node.outputs.outcome != 'success' }}
+    steps:
+      # No checkout: the action reaches GitHub through the API, and the reports
+      # arrive as artifacts.
+      - uses: actions/download-artifact@<full-commit-sha> # vX.Y.Z
+        with:
+          path: advisories
+      - name: Build the report
+        if: env.FINDINGS == 'true'
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # An audit job that failed before its upload leaves no log, and the
+          # glob then has to expand to nothing rather than to itself.
+          shopt -s nullglob
+          {
+            echo "The scheduled dependency audit needs triage."
+            echo
+            echo "| Check | Outcome |"
+            echo "| ----- | ------- |"
+            echo "| \`cargo deny check\` | ${{ needs.rust.outputs.outcome || needs.rust.result }} |"
+            echo "| \`pnpm audit\` | ${{ needs.node.outputs.outcome || needs.node.result }} |"
+            echo
+            # Trimmed: an issue body is capped at 64 KB. The uploaded artifact
+            # keeps the whole log.
+            for log in advisories/*/*.log; do
+              printf '<details><summary>%s</summary>\n\n```text\n' "$(basename "$log")"
+              head -n 200 "$log"
+              printf '```\n\n</details>\n\n'
+            done
+            echo "Run: $RUN_URL"
+          } > issue-body.md
+      # One issue per condition: opened on the first failing run and refreshed
+      # in place afterwards, so a weekly schedule cannot pile up reports.
+      - name: Open or refresh the tracking issue
+        if: env.FINDINGS == 'true'
+        uses: sebastian-software/project-infra/.github/actions/open-or-refresh-issue@<full-commit-sha> # vX.Y.Z
+        with:
+          title: "chore(deps): dependency audit findings"
+          label: dependencies
+          marker: dependency-audit
+          body-file: issue-body.md
+      # The clean run is what closes it, so the issue tracks the condition
+      # rather than the run that first reported it.
+      - name: Retire the tracking issue
+        if: env.FINDINGS != 'true'
+        uses: sebastian-software/project-infra/.github/actions/open-or-refresh-issue@<full-commit-sha> # vX.Y.Z
+        with:
+          title: "chore(deps): dependency audit findings"
+          label: dependencies
+          marker: dependency-audit
+          close-comment: The scheduled dependency audit came back clean.
