@@ -8,3 +8,10 @@ publish = false
 
 [lints]
 workspace = true
+
+# Only for a published crate. docs.rs builds with every feature and sets the
+# `docsrs` cfg, so feature annotations render there; the rustdoc job passes the
+# same flags and fails on a warning before publication.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
