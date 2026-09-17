@@ -202,7 +202,10 @@ the crate nor a dropped file changes the archive unnoticed.
 
 Keep extended checks such as fuzzing and benchmarks in named gates with their
 prerequisites documented. Their cost and external requirements should not make
-the ordinary development loop unreliable.
+the ordinary development loop unreliable. Where a benchmark is to report on a
+pull request rather than only compile,
+[measure it against the merge base](ci-and-releases.md#measure-performance-against-the-merge-base)
+in one job, and hold the figures the project publishes to the same evidence.
 
 Put cargo-fuzz targets in a `fuzz/` directory that forms its own workspace,
 excluded from the root workspace, and commit a seed corpus for each target. The

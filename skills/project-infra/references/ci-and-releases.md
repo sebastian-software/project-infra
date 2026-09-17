@@ -311,6 +311,65 @@ pull request. The
 [release workflow excerpt](../assets/ci/release-please/release.yml) shows that
 token and the write permissions the job needs.
 
+## Measure performance against the merge base
+
+Where a project measures performance in CI, compare the merge base and the pull
+request's head in the same job, on the same runner, with the same toolchain. A
+number another run recorded is not evidence: runner hardware, kernel, and the
+neighbors sharing the machine change between runs, so a stored baseline drifts
+on its own and the drift is attributed to whichever pull request is open when it
+surfaces, which costs a round of investigation and says nothing about that
+change. Check out the full history,
+resolve the revision with `git merge-base`, and add it as a `git worktree`
+beside the checkout, so one job builds both binaries and measures them back to
+back. Comparing against the tip of the base branch instead charges the branch
+for everything merged since it started.
+
+Keep an elapsed-time lane informative rather than blocking. Publish both
+measurements and their ratio into `$GITHUB_STEP_SUMMARY`, where a reviewer reads
+them beside the diff, and let the job pass whatever the ratio says: wall time on
+a shared runner carries filesystem, scheduling, and neighbor noise that no
+sample count removes, so a threshold on it fails changes that are not slower and
+passes changes that are. What may gate is a deterministic measurement — an
+instruction count from a Callgrind run over a fixed fixture, or a ratio guard
+with a margin well beyond the spread the lane has been observed to produce
+across real pull requests. Land the harness first, watch it for a while, and let
+it start failing only once that spread is known. A path-filtered lane also has
+no run on a pull request that touches nothing it measures, and a required check
+that never reports blocks the merge, so keep the lane out of branch protection
+and out of the aggregate gate.
+
+Whatever the lane measures, let it fail when it measures nothing. A benchmark
+binary whose state directory was restored from another commit can load no
+baseline, print no measurement, and still exit zero, so the lane reports success
+for a run that established nothing; assert that both sides produced numbers. The
+[comparison workflow excerpt](../assets/ci/bench-compare.yml) shows the
+worktree, the two builds, the bencher output format that gives the table one
+line per benchmark, and that guard.
+
+Trace every figure a README or a site publishes to a committed report. A number
+in prose otherwise has no owner: the run behind it has expired, nobody reruns it
+to refute it, and it ages into a claim about a version the project no longer
+ships. Commit the report, register the figure against it, and check the pair in
+the ordinary gate. The
+[published-number check](../assets/common/check-published-numbers.mjs) reads a
+claim map that names, per figure, the report file, the path to the value inside
+it, the tolerance a rounded claim may keep, and the documents that print it. It
+fails when a document has dropped the figure, when the report no longer carries
+the value, and when the two have drifted apart, so refreshing a report forces
+the copy edit that belongs with it. Its optional sweep catches the other
+direction: a figure added to a document that the map never registered.
+
+Bound what ships with a budget instead of a comparison: the size of a released
+binary, of a published bundle, and of a generated index, and the duration of a
+build. These are deterministic per build, so unlike a timing lane a budget can
+block a pull request, and the growth worth catching is abrupt — a dependency
+that bakes a data table into every platform's artifact costs megabytes, not
+percent. Set the budget as a ceiling rather than a comparison against the last
+build, because exact sizes move with toolchain patch releases, linkers, and
+platforms, and record and raise it the way
+[a site's budgets](documentation.md#publish-the-site) are recorded and raised.
+
 ## Verify the artifact consumers receive
 
 Packaging can omit files or break entry points even when source tests pass.
