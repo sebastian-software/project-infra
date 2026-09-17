@@ -218,6 +218,15 @@ Use Cargo's release defaults until measured size or performance needs justify
 changes. Explain custom profile settings next to them. Native integration can
 require unwinding panics, so panic behavior must match the artifact's contract.
 
+A crate compiled as a `cdylib` for a Node addon is that case: give it a profile
+such as `[profile.release-node]` that inherits `release` and sets
+`panic = "unwind"`, as the [workspace excerpt](../assets/rust/Cargo.toml) shows.
+With `panic = "abort"` a panic takes down the host process instead of reaching
+the binding that would turn it into a JavaScript error, and the profile is the
+only place that choice is visible. Verify it where it matters rather than in the
+manifest: load the built addon and call a function that panics, then require a
+caught error and a process that is still running.
+
 Declare publication intent per crate. Preserve licenses, attribution, public
 features, and supported targets. Use the [artifact checks](ci-and-releases.md#verify-the-artifact-consumers-receive)
 to verify what a consumer will install.

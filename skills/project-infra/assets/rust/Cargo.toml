@@ -23,3 +23,11 @@ dbg_macro = "deny"
 todo = "deny"
 # Add a rule like this one once the defect it catches has occurred here.
 # unwrap_used = "deny"
+
+# Profile for a crate that builds a Node addon (`crate-type = ["cdylib"]`).
+# Unwinding keeps a panic inside the addon, where the binding turns it into a
+# JavaScript error, instead of aborting the process that loaded it. Cargo reads
+# profiles only from the workspace root manifest.
+[profile.release-node]
+inherits = "release"
+panic = "unwind"
