@@ -32,11 +32,12 @@ jobs:
       outcome: ${{ steps.deny.outcome }}
     steps:
       - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
-      # A prebuilt binary; `cargo install` would compile cargo-deny on every
-      # scheduled run.
-      - uses: taiki-e/install-action@<full-commit-sha> # vX.Y.Z
+      # The cargo-deny release mise.toml pins, as in the check workflow, so the
+      # scheduled audit and the pull-request gate run the same binary.
+      - uses: jdx/mise-action@<full-commit-sha> # vX.Y.Z
         with:
-          tool: cargo-deny
+          version: <mise-version>
+          install_args: --locked
       # The same command and the same deny.toml as the check workflow.
       # Advisories are one of the sections it checks, so nothing here needs a
       # second advisory tool.

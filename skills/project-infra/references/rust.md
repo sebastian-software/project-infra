@@ -59,10 +59,67 @@ For a workspace with compatible features, start with the commands in the
 [check script](../assets/rust/scripts/check.sh): formatting, Clippy with warnings
 denied, tests, and the dependency policy check, all with locked resolution.
 
-Commit the workspace lockfile and use locked resolution in ordinary CI. Add a
-rustdoc build with warnings denied for published libraries. Test the MSRV and
-supported platforms separately. For mutually exclusive or system-dependent
-features, check explicit supported combinations.
+Commit the workspace lockfile and use locked resolution in ordinary CI. Split
+the workflow into jobs that answer separate questions, as the
+[check workflow excerpt](../assets/ci/check.yml) does, so a failure names the
+property that broke instead of arriving as one long log:
+
+| Job         | What it establishes                                                          | Keep it when                               |
+| ----------- | ---------------------------------------------------------------------------- | ------------------------------------------ |
+| `rust`      | The gate script on one platform: formatting, lints, tests, dependency policy | Always                                     |
+| `msrv`      | The declared floor still builds the workspace                                | Always                                     |
+| `platforms` | The test suite on every operating system the product supports                | The product supports more than one         |
+| `rustdoc`   | The documentation builds under the flags docs.rs uses                        | The repository publishes a library         |
+| `features`  | The feature combinations `--all-features` never builds                       | Features are exclusive or system-dependent |
+
+Every job the project keeps also belongs in the aggregate gate's `needs` list
+and gets a result test of its own. A job left out of both reports to nobody, and
+its failure blocks nothing.
+
+The `msrv` job reads `rust-version` from `Cargo.toml` in a shell step and
+publishes it as a step output, which keeps the declaration the only copy of the
+floor: a bump moves the lane with it, and another job needing the value copies
+those same two steps rather than a literal version. Run the check as
+`cargo "+$MSRV"`. rustup resolves a toolchain in a fixed order — the
+`+toolchain` argument, then `RUSTUP_TOOLCHAIN`, then a directory override, then
+`rust-toolchain.toml`, then the default toolchain — so a step that installs the
+floor and only makes it the rustup default loses to a committed
+`rust-toolchain.toml`, and the lane reports on stable while claiming to test the
+floor. `rustup override set` outranks the file too, and a `RUSTUP_TOOLCHAIN`
+exported by an earlier setup step outranks both and decides every later command
+in that job whatever the file says. `rustup show active-toolchain` prints which
+one won. Compiling is enough for the claim the floor makes; run the tests on it
+as well where the project promises its behavior there.
+
+A project that states its floor relative to current stable, such as stable minus
+two releases, can assert that rule in a job of its own: fetch
+`channel-rust-stable.toml` from `static.rust-lang.org`, read the version under
+`[pkg.rust]`, and compare it with the declared `rust-version`. Keep that job on
+`schedule` and `workflow_dispatch` only. It depends on a network fetch and on
+Rust's release calendar rather than the repository's, so on pull requests an
+upstream release or a transient outage would fail a change that caused neither.
+Being scheduled, it also stays out of the gate, which would otherwise read
+`skipped` on every pull request.
+
+The `rustdoc` job builds with `-D warnings --cfg docsrs` in `RUSTDOCFLAGS` and
+`--no-deps`, matching what `[package.metadata.docs.rs]` in the
+[member excerpt](../assets/rust/crates/example/Cargo.toml) tells docs.rs to do.
+A broken link or an unresolved reference then fails the check instead of
+reaching the published documentation. `--cfg docsrs` is an ordinary cfg and
+needs no nightly by itself; a crate needs one when it gates `feature(doc_cfg)`
+behind that cfg to render feature badges, and the nightly release then belongs
+in the same pinned set as the project's other tool versions. Otherwise leave the
+job on the toolchain `rust-toolchain.toml` selects.
+
+Test the supported operating systems in a matrix that runs tests only: the
+platform-independent checks already ran in the gate script, and repeating them
+per runner buys nothing. Where the project ships a statically linked binary,
+give `x86_64-unknown-linux-musl` a lane that builds, tests, and runs the binary
+once, because that target needs a linker the default runner image does not carry
+and a binary that only compiles has not been shown to start. Benchmarks compile
+already, since the gate script lints `--all-targets`; a benchmark outside that
+command, in a separate workspace or behind a feature, needs its own
+`cargo bench --no-run --locked` so it cannot rot unnoticed.
 
 Use `cargo deny check` for dependency policy, starting from the
 [deny.toml excerpt](../assets/rust/deny.toml): the permissive license allow-list,
@@ -70,6 +127,19 @@ yanked and unmaintained crates as errors, and crates.io as the only source.
 Record a finding as a narrow, commented exception for the crate that raised it,
 never by widening the shared allow-list. Treat duplicate versions as warnings
 unless their cost justifies a stricter rule.
+
+cargo-deny and the other helpers these jobs call are CLI tools rather than crate
+dependencies, so pin them where the project's
+[other CLI tools](common.md#keep-tool-selection-in-the-project) live: the
+[mise.toml excerpt](../assets/common/mise.toml) names each tool and its version,
+`mise.lock` records the archive and checksum per platform, and the workflow
+installs them with `jdx/mise-action` and `install_args: --locked`. A contributor
+and CI then resolve the same reviewed version, Renovate's mise manager proposes
+the next one as an ordinary pull request, and no job spends minutes compiling a
+helper it could download. Where a tool publishes no release archive mise can
+fetch, an installer action that resolves its own prebuilt binaries stays
+acceptable for that tool; `cargo install` is the last resort, because it
+compiles on every run and pins nothing the lockfile can record.
 
 Where a check needs a long flag list, declare a Cargo alias for it, as the
 [alias excerpt](../assets/rust/.cargo/config.toml) does for coverage runs. A

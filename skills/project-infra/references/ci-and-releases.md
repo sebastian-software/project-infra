@@ -4,11 +4,12 @@ Release conventions apply to artifacts the project versions and distributes.
 
 ## Keep CI reproducible and bounded
 
-Share check implementations with the local gate. Pin external GitHub Actions
-to full commit SHAs with readable version comments, set job timeouts, and grant
-read access by default. Give publishing jobs the write permissions their
-operations need. These choices make dependency changes reviewable and keep
-failed or stalled jobs from consuming unbounded time.
+Share check implementations with the local gate, and pin the CLI tools a job
+installs in `mise.toml` so the workflow and that gate resolve the same versions.
+Pin external GitHub Actions to full commit SHAs with readable version comments,
+set job timeouts, and grant read access by default. Give publishing jobs the
+write permissions their operations need. These choices make dependency changes
+reviewable and keep failed or stalled jobs from consuming unbounded time.
 
 Resolve a pinned SHA from the release tag rather than from a branch, so the pin
 names a reviewed state:
