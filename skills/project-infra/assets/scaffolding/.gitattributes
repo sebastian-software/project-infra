@@ -1,0 +1,15 @@
+# One byte sequence per tracked text file, whatever the platform of the
+# checkout, so a formatter or a byte comparison cannot disagree with CI.
+* text=auto eol=lf
+
+# The generated README is compared byte for byte, so neither the generated file
+# nor its authored source may be converted on checkout.
+/README.md text eol=lf
+/README.md.src text eol=lf
+
+# Add rules like these for content whose bytes are input or output rather than
+# source, such as native artifacts, images, and fixtures a parser reads
+# literally.
+# *.node binary
+# *.png binary
+# tests/fixtures/*.txt -text -whitespace

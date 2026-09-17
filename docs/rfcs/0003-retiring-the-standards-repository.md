@@ -82,6 +82,9 @@ asserting the old owner inside the `uses:` string.
 
 1. Who owns the scaffolding templates: this repository as the source, or
    `repo-template` as the applier that reads them from here?
+   Answered 2026-09-17: this repository is the source, the set lives under
+   `skills/project-infra/assets/scaffolding/`, the skill applies it, and a
+   template repository, if one is kept, starts from the same files.
 2. Does the Forgejo CI workflow have a consumer that justifies carrying it?
 3. Resolved: the release blueprint is a section of `ci-and-releases.md`, not a
    reference of its own.

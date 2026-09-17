@@ -1,0 +1,11 @@
+# Replace <repository> with the repository name. Both security routes are
+# listed because the private advisory form exists only once a maintainer has
+# enabled private vulnerability reporting, while the address always resolves.
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability by email
+    url: https://github.com/sebastian-software/<repository>/blob/main/SECURITY.md
+    about: Do not open a public issue. Email security@sebastian-software.de — this route always works, whatever the repository's settings are.
+  - name: Report a security vulnerability as a private advisory
+    url: https://github.com/sebastian-software/<repository>/security/advisories/new
+    about: Do not open a public issue. Works once private vulnerability reporting is enabled for this repository; otherwise use the email route above.
