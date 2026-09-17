@@ -183,3 +183,45 @@ keep the expensive ones on one lane: browser downloads, end-to-end runs, site
 builds, and example matrices exercise the same code on every major and pay their
 full cost again on each. Differences between majors surface in the cheap steps
 first, as the Web Storage globals above do.
+
+A package that ships a compiled binary per platform needs checks the packed
+artifact cannot make. Its musl targets cross-compile on a glibc runner, so no
+step executes what the build produced, and an addon that resolves a symbol the
+musl loader does not provide fails on the consumer's first `require` in Alpine.
+Build the musl package on a musl host and load the addon in the musl Node
+runtime a consumer installs; the `verify-musl-native` action does both in
+containers, on a runner whose architecture matches the target because nothing
+emulates the artifact. Run it in the check workflow rather than only in the
+release lane, so the pull request that breaks the musl build is the one that
+fails. The addon's panic behavior is a Cargo profile setting, described in
+[Rust](rust.md#configure-releases-for-their-consumers).
+
+Guard the publish itself with a `prepublishOnly` script in every platform
+package. npm has no opinion about what `main` or `bin` points at, so a package
+whose binary never arrived from the build matrix publishes as an empty shell,
+and the consumer whose `optionalDependencies` select that platform fails when it
+loads the addon. The [native artifact guard](../assets/node/scripts/assert-native-artifact.mjs)
+reads the manifest, collects the artifacts it advertises, and fails when one of
+them is missing or empty. Run it in CI as well, after the lane collects the
+built artifacts, so the state that would be published is rejected before the
+release job starts.
+
+Hold each artifact to a byte ceiling with the
+[binary size check](../assets/node/scripts/check-binary-size.mjs). A native
+addon ships once per platform, so a dependency that links in a character table
+or a second runtime multiplies across the matrix and arrives as a larger
+download for every consumer, while every test stays green. The check records a
+measured baseline per artifact and a ceiling with headroom above it instead of
+comparing exactly, because sizes move with toolchain patch releases and linkers
+and an exact comparison reports growth that is not there. Raising a ceiling is
+then an edit that carries its reason in the commit message.
+
+Keep profile-guided optimization opt-in, and let it fail loudly. A local build
+stays fast by default while an environment variable turns on the instrument,
+train, merge, and rebuild cycle for the published addon. A missing profiling
+tool, a training run that wrote no profile data, or a profile that does not
+match the units being compiled has to stop that build. Falling back to a plain
+release build instead publishes an addon slower than the one that was measured,
+and no later check can tell the two apart. A profile also applies only to the
+target it was collected for, so a cross-compiled platform either trains in its
+own environment or is built without one, said plainly in the build output.

@@ -1,10 +1,10 @@
 # Shared composite actions
 
-Eight composite actions that the organization's release and check workflows
-would otherwise reimplement: crates.io retry loops, napi platform matrices,
-release-asset packaging and the gate that publishes a draft release, the
-lifecycle of a tracking issue, an action-pin checker, and a workflow-hygiene
-checker. They are ordinary actions in this repository, so consumers reference
+Nine composite actions that the organization's release and check workflows
+would otherwise reimplement: crates.io retry loops, napi platform matrices and
+the musl load check beside them, release-asset packaging and the gate that
+publishes a draft release, the lifecycle of a tracking issue, an action-pin
+checker, and a workflow-hygiene checker. They are ordinary actions in this repository, so consumers reference
 them by path and commit SHA:
 
 ```yaml
@@ -168,7 +168,9 @@ shell loops) and `sidecars` (JSON array of sidecar package names).
 
 The two musl entries carry `native: false`: their runner is not a musl host, so
 the job installs the musl toolchain and cross-compiles. Everything else builds
-natively on the listed runner.
+natively on the listed runner. Nothing in that cross-compile executes what it
+produced, so pair those two entries with
+[`verify-musl-native`](#verify-musl-native).
 
 Naming is derived, never written down twice (decision D7 of the family audit):
 
@@ -177,6 +179,52 @@ Naming is derived, never written down twice (decision D7 of the family audit):
 - addon file — `<binary>.<id>.node`, the `@napi-rs/cli` default, where
   `<binary>` is the package name without its scope;
 - CI artifact — `native-<id>`.
+
+## `verify-musl-native`
+
+Builds one musl platform package in an Alpine container and loads its addon in
+an Alpine Node runtime, so the artifact runs on a musl host before a consumer
+installs it.
+
+| Input             | Default             | Meaning                                                                 |
+| ----------------- | ------------------- | ----------------------------------------------------------------------- |
+| `package-dir`     | —                   | Platform package directory; both containers work from it                |
+| `binary`          | —                   | Addon file name inside it, as `napi-matrix` derives it                  |
+| `target`          | —                   | Rust target of the musl build; its architecture has to match the runner |
+| `build-command`   | —                   | Shell command that builds the addon, run with `RUST_TARGET` set         |
+| `build-image`     | `rust:alpine`       | Build container: a musl host carrying a Rust toolchain                  |
+| `build-packages`  | `nodejs build-base` | `apk` packages installed before the build command                       |
+| `run-image`       | `node:lts-alpine`   | Load container: the musl Node runtime a consumer installs into          |
+| `required-export` | `""`                | Function the loaded addon has to expose; empty checks only the load     |
+
+```yaml
+- uses: sebastian-software/project-infra/.github/actions/verify-musl-native@<sha> # v0.0.0
+  with:
+    package-dir: npm/linux-x64-musl
+    binary: tool.linux-x64-musl.node
+    target: x86_64-unknown-linux-musl
+    build-command: node ../../scripts/build-native.mjs
+```
+
+A cross-compiled musl addon is never executed by the job that builds it, so a
+link against a symbol the musl loader does not provide, or a build that silently
+produced a glibc artifact, reaches consumers as an addon that throws on `require`
+in Alpine. This action is the step that runs it: the build container is a musl
+host, and the load container is the runtime the consumer has.
+
+Three consequences of using containers rather than a cross-compile:
+
+- the step needs a runner whose architecture matches `target`, because nothing
+  emulates the artifact; the action checks that first and names both sides;
+- it needs a Docker daemon, so it belongs on a Linux runner;
+- the container writes as root, so the addon it leaves in the package directory
+  is root-owned for the rest of the job.
+
+The build command runs inside the build container, which is why the package
+list is an input: the Rust Alpine image carries neither a linker nor a Node.js
+interpreter for a build script. The image defaults track the current Rust and
+Node LTS releases; pass a digest-pinned reference when the lane has to be
+reproducible.
 
 ## `open-or-refresh-issue`
 
