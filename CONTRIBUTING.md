@@ -175,11 +175,12 @@ whole release; nothing is published to a registry, and
 [`.release-please-manifest.json`](.release-please-manifest.json) records the
 released version.
 
-The workflow passes `secrets.RELEASE_PLEASE_TOKEN` and falls back to
-`GITHUB_TOKEN`: that secret has to exist for the `Check` and `PR title`
-workflows to run on the release pull request, because GitHub starts no workflow
-runs for events created with the built-in token, and without it the release
-pull request opens with no checks at all.
+The workflow passes `secrets.RELEASE_PLEASE_TOKEN`, supplied by the
+organization. That secret has to exist for the `Check` and `PR title` workflows
+to run on the release pull request, because GitHub starts no workflow runs for
+events created with the built-in token. It is named alone rather than with a
+`GITHUB_TOKEN` fallback, so a missing secret fails the release job instead of
+opening a release pull request that silently carries no checks.
 
 ## License
 

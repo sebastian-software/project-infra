@@ -328,11 +328,14 @@ releases.
 Run the action with a fine-grained personal access token or a GitHub App token.
 GitHub starts no workflow runs for events created with the built-in
 `GITHUB_TOKEN`, so a release pull request opened with it arrives with no checks
-at all and a required check never reports. Writing the input as
-`${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}` degrades a fork or
-a revoked secret to an unchecked release pull request instead of a failing
-workflow. `GITHUB_TOKEN` alone suffices only where nothing has to run on that
-pull request. The
+at all and a required check never reports. Name that secret alone. Writing the
+input as `${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}` turns a
+missing, expired, or revoked secret into an unchecked release pull request on a
+green workflow, which is the failure the token exists to prevent and is now
+invisible. Without the fallback the same situation fails the release job, where
+it is read and fixed. `GITHUB_TOKEN` alone suffices only where nothing has to
+run on that pull request; write it directly there rather than as a fallback, so
+the workflow states which case it is in. The
 [release workflow excerpt](../assets/ci/release-please/release.yml) shows that
 token and the write permissions the job needs.
 
