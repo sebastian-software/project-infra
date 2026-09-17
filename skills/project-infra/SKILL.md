@@ -20,13 +20,14 @@ Node.js or Rust code still uses the common, CI, and documentation guidance.
 
 Read only the references relevant to the requested work:
 
-| Scope                                                              | Reference                                        |
-| ------------------------------------------------------------------ | ------------------------------------------------ |
-| Project boundaries, local checks, tool and configuration ownership | [Common workflow](references/common.md)          |
-| JavaScript or TypeScript packages, apps, and documentation sites   | [Node.js and TypeScript](references/node.md)     |
-| Rust packages, workspaces, and native components                   | [Rust](references/rust.md)                       |
-| CI, dependency updates, or distributed artifacts                   | [CI and releases](references/ci-and-releases.md) |
-| Setup instructions, generated READMEs, or agent guidance           | [Documentation](references/documentation.md)     |
+| Scope                                                              | Reference                                          |
+| ------------------------------------------------------------------ | -------------------------------------------------- |
+| Project boundaries, local checks, tool and configuration ownership | [Common workflow](references/common.md)            |
+| JavaScript or TypeScript packages, apps, and documentation sites   | [Node.js and TypeScript](references/node.md)       |
+| Rust packages, workspaces, and native components                   | [Rust](references/rust.md)                         |
+| CI, dependency updates, or distributed artifacts                   | [CI and releases](references/ci-and-releases.md)   |
+| Setup instructions, generated READMEs, or agent guidance           | [Documentation](references/documentation.md)       |
+| A repository that still references the retired standards CLI       | [Standards CLI migration](references/migration.md) |
 
 Use the common guidance for infrastructure changes and the documentation
 guidance when the contributor workflow changes. Resolve these paths relative

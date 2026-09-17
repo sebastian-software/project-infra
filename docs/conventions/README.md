@@ -11,6 +11,7 @@ when refining a standard.
 | Rust                           | [Rust](../../skills/project-infra/references/rust.md)                                 |
 | Automation and distribution    | [CI and releases](../../skills/project-infra/references/ci-and-releases.md)           |
 | Contributor and agent guidance | [Documentation](../../skills/project-infra/references/documentation.md)               |
+| Retiring the standards CLI     | [Standards CLI migration](../../skills/project-infra/references/migration.md)         |
 
 The references link to configuration excerpts under
 [`assets/`](../../skills/project-infra/assets/); each excerpt shows the shape of

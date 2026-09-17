@@ -66,6 +66,7 @@ schema here.
 Maintain a concise root `AGENTS.md`. Add scoped instructions only when a
 subproject needs different guidance. State the actual gate, generated-file
 boundaries, and product constraints that affect edits.
+The [AGENTS.md excerpt](../assets/common/AGENTS.template.md) shows that shape.
 
 When Claude integration is used, keep `CLAUDE.md` as a small pointer through its
 supported import mechanism. Use the corresponding mechanism for other apps.
