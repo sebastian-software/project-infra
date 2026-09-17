@@ -1,0 +1,129 @@
+# .github/workflows/deploy-pages.yml
+# Publishes a documentation site to GitHub Pages after the check workflow has
+# passed on the default branch. Replace every <full-commit-sha> with the commit
+# of the release named in the comment and keep that comment current.
+name: Deploy Pages
+
+on:
+  # The deploy follows the gate rather than the push, so only a commit whose
+  # checks passed reaches the live site. `workflows:` names the check
+  # workflow's `name:`, not its file, and only the copy of this file on the
+  # default branch is ever triggered.
+  workflow_run:
+    workflows: [Check]
+    types: [completed]
+  # Redeploy the current default branch without a new commit, after a Pages
+  # setting changed or a deployment failed.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Pages replaces the whole published tree, so deployments are serialized and an
+# in-flight one is never cancelled: a half-finished replacement is the live site.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # A completed run arrives for every conclusion, every trigger, and every
+    # branch, including a failed pull-request run, so the guard belongs here.
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pages: read # actions/configure-pages reads the Pages configuration
+    steps:
+      # A workflow_run job checks out the default branch, which is whatever it
+      # points at now rather than the commit whose checks passed. The manual
+      # run has no such event and falls back to its own ref.
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: pnpm/action-setup@<full-commit-sha> # vX.Y.Z
+      - uses: actions/setup-node@<full-commit-sha> # vX.Y.Z
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      # Exposes the site's base URL and base path to the build, so a project
+      # site under /<repo>/ and a custom domain at the root produce correct
+      # links from the same configuration. It runs before the build for that
+      # reason. Turning Pages on from here (`enablement: true`) needs a token
+      # with Pages write access; the built-in one cannot do it.
+      - uses: actions/configure-pages@<full-commit-sha> # vX.Y.Z
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+        working-directory: <site>
+      # Only for a site that keeps older major versions reachable. A version
+      # folder the current build does not emit has to be copied into the tree
+      # from its committed snapshot, and a version the site still lists with
+      # neither a build nor a snapshot fails the job instead of disappearing
+      # from the live site.
+      - run: node scripts/restore-version-snapshots.mjs
+        working-directory: <site>
+      # Reads the tree that is about to be uploaded, not the sources: every
+      # page the project advertises exists, and the host and paths in the built
+      # links are the ones this site is served under.
+      - run: node scripts/verify-build.mjs
+        working-directory: <site>
+      - uses: actions/upload-pages-artifact@<full-commit-sha> # vX.Y.Z
+        with:
+          path: <site>/build/client
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write # create the deployment
+      id-token: write # the OIDC claim Pages validates the deploying ref against
+    # Records the deployment under the environment Pages protects, and puts its
+    # URL on the run.
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@<full-commit-sha> # vX.Y.Z
+
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # The build checks the files; this checks the published site, where DNS,
+      # the custom domain, and the base path apply for the first time. Probe
+      # status codes and fixed strings only, so ordinary copy changes cannot
+      # fail a deploy.
+      - name: Probe the published site
+        env:
+          BASE_URL: https://<domain>
+        run: |
+          set -eu
+          probe() {
+            path="$1"
+            expected="$2"
+            needle="${3:-}"
+            # A new deployment reaches the CDN shortly after the API reports
+            # it, so an early mismatch is retried before it fails the job.
+            for attempt in 1 2 3; do
+              status=$(curl -sSL --max-time 20 -o response \
+                -w '%{http_code}' "$BASE_URL$path" || echo 000)
+              if [ "$status" = "$expected" ]; then break; fi
+              echo "attempt $attempt for $path returned $status"
+              sleep 20
+            done
+            test "$status" = "$expected"
+            test -z "$needle" || grep -qF "$needle" response
+            echo "ok $path ($status)"
+          }
+          probe / 200
+          probe /llms.txt 200 "<product>"
+          probe /sitemap.xml 200 "$BASE_URL/<advertised-path>"
+          probe /does-not-exist 404

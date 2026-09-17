@@ -235,3 +235,55 @@ When that site is the reader's entry point, the decision records can live on its
 ADR route in the site's own file format. Keep the filename, the heading, the
 status bullets, and the single index page, and point the index check at that
 index, so the set stays verifiable wherever it is published.
+
+### Publish the site
+
+Deploy the commit whose checks passed, not the push that created it: start the
+deployment from the check workflow's successful completion, confirm that the run
+was a push to the default branch, and check out the head commit that run
+recorded, because the branch may already point somewhere else. Serialize
+deployments and let an in-flight one finish, since a Pages deployment replaces
+the whole published tree. The
+[Pages workflow excerpt](../assets/ci/deploy-pages.yml) shows that gating, the
+`github-pages` environment, and the verification steps below, with the pins,
+timeouts, and permission scopes
+[every workflow carries](ci-and-releases.md#keep-ci-reproducible-and-bounded).
+
+Give the site one address. The `github.io` host serves a project site under a
+`/<repo>/` prefix, so links built for a custom domain cannot resolve there, and
+a site that has a domain keeps a second address that splits bookmarks, search
+results, and inbound links. Publish the domain from a `CNAME` file among the
+site's static assets, so every deploy restores it, and fail the project's gate
+when the `github.io/<repo>` host appears in any text file of the repository. Let
+the same check read every advertised `https://<domain>/<path>` link and fail
+when a path has no route in the site's sources; that is what a renamed or
+removed page leaves behind.
+
+Check the built tree before it is uploaded, while a failure still blocks the
+deployment. The pages the project advertises have to exist in the output, and a
+site that keeps older major versions reachable needs each retired major
+committed as a snapshot and copied into the tree: the deployment replaces
+everything, so a version folder the current build no longer emits disappears
+from the live site. Fail the build when a version the site still lists has
+neither a build nor a snapshot.
+
+Probe the site after the deployment. A job that fetches the entry page,
+`llms.txt`, the sitemap, and a path that has to answer 404 is the first check to
+exercise DNS, the certificate, and the base path, which no check against the
+local build output reaches. Keep the probes on status codes and fixed strings,
+so ordinary copy changes cannot fail a deploy, and retry briefly: a new
+deployment reaches the CDN shortly after the API reports it.
+
+Performance budgets are optional and belong in the ordinary gate rather than in
+the deployment. The useful ones are the gzip size of the entry bundle, of the
+JavaScript a page loads eagerly, of the whole output, and of the search index,
+plus the build duration. Record the measured baseline beside each budget and set
+the budget as headroom over it, so the check reports runaway growth instead of
+ordinary movement, and move budget, baseline, and the stated reason together
+when a change is meant to exceed one.
+
+A route check has to know how the framework maps source files to routes, and a
+budget check which chunks a page loads first, so both belong with the site build
+rather than with a shared workflow. Ardo's
+[deployment guide](https://ardo-docs.dev/v4/guide/deployment) covers that build
+side: the base path, the output directory, and the version folders.
