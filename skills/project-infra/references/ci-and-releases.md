@@ -171,6 +171,18 @@ and documentation with the `generic` updater, which replaces the version on a
 line marked `x-release-please-version` or inside an
 `x-release-please-start-version` block.
 
+No part of a release run reports the file a configuration forgot. The
+[release-set check](../assets/common/check-release-set.mjs) reads the
+configuration and the manifest, scans the tracked tree, and reports a
+`package.json`, `Cargo.toml`, lockfile entry, or version annotation that no
+updater writes, a covered version that contradicts its component's manifest
+entry, and an updater whose file or field does not exist. Run it from the gate
+of any repository that carries `extra-files`, and pass `--ignore <path>` for a
+fixture crate or a configuration excerpt that has a version of its own.
+Agreement that belongs to one repository — a publish matrix, the platform
+sidecars an `optionalDependencies` list names, a publication hold — stays in
+that repository's own checks.
+
 A Cargo workspace inheriting `version.workspace = true` has no per-package
 version for the `rust` strategy to rewrite. Use the `simple` strategy with a
 `version-file`, then list `[workspace.package]`, every intra-workspace
@@ -183,6 +195,17 @@ candidate instead of promoting it. Leaving the series is therefore explicit.
 Land the transition with a `Release-As: X.Y.Z` footer on the commit that should
 become the stable release, and keep using that footer afterwards until the
 prerelease settings are removed from the configuration.
+
+Rehearse a configuration change before it opens a release pull request. The
+release-please library runs offline against the repository's own files and a
+synthetic commit history: it selects the next version, applies every updater to
+in-memory copies, and hands the candidate to the native tools —
+`cargo metadata --locked` over the generated manifests and lockfile,
+`pnpm install --lockfile-only` expected to leave the lockfile unchanged. A
+forgotten updater or a lockfile the release cannot keep current then fails in a
+scratch directory instead of on the tagged commit. The library is a development
+dependency and the driver script belongs to the repository; this skill carries
+no excerpt for it.
 
 When a release carries built artifacts, mark it `draft: true`. The tag and the
 release then exist before anything is attached, so upload jobs have somewhere to
