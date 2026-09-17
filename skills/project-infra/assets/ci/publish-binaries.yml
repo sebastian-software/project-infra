@@ -128,3 +128,30 @@ jobs:
             <tool>-${{ steps.version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz.sha256
             <tool>-${{ steps.version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz.sigstore.json
             # the same three names for every other target in the matrix
+
+  # The tap is fed by the release instead of by a token: the formula is built
+  # from the published release's own SHA256SUMS, uploaded beside the archives,
+  # and the tap repository pulls it from there on its own schedule.
+  homebrew:
+    needs: [release-please, finish]
+    if: ${{ !cancelled() && needs.finish.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # upload the formula to the release
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+        with:
+          # The generator ships with the product, so it prints the formula the
+          # released sources describe.
+          ref: ${{ env.TAG }}
+      # One download instead of four archives, and the hashes are the ones the
+      # release published: a name or a checksum the release does not carry
+      # fails the generator.
+      - run: gh release download "$TAG" --pattern SHA256SUMS --clobber
+      - run: sh scripts/homebrew-formula.sh "$TAG" SHA256SUMS > <tool>.rb
+      - run: gh release upload "$TAG" <tool>.rb --clobber

@@ -293,6 +293,31 @@ set, no release pull request opens and nothing publishes; once it is lifted,
 reason then stay reviewable in the repository instead of living in a disabled
 workflow or a maintainer's memory.
 
+Feed a Homebrew tap from the release rather than from the product repository.
+Once `finish-release` has published the release, the `homebrew` job of the
+[publish-binaries excerpt](../assets/ci/publish-binaries.yml) generates the
+formula from the release's own `SHA256SUMS` and uploads it as another asset,
+and the tap pulls that asset on its own schedule or when a maintainer
+dispatches it. The product repository then holds no token for another
+repository: pushing the update from here would put a long-lived
+cross-repository secret in the workflow that publishes the release, and it
+would give the formula checksums from a second computation that can disagree
+with the ones the release published. What it costs is latency, because the tap
+updates at its polling interval instead of inside the release run. A product
+that needs the tap current within minutes, and already holds a token that can
+write it, can send a `repository_dispatch` to the tap once the release is
+public; that path needs a downgrade guard comparing the version in the tap's
+current formula with the one being released, because re-running an older tag
+otherwise moves the tap backwards. The
+[formula generator](../assets/common/homebrew-formula.sh) takes the formula
+name, description, homepage, license, repository, tag prefix, archive name, and
+install lines as variables, and prints `on_macos` and `on_linux` blocks with
+nested `on_arm` and `on_intel` for the four archives Homebrew can install.
+`brew install --build-from-source` and `brew test` belong in the tap, which is
+the repository that has Homebrew; the product repository checks only that the
+generated formula names assets and checksums the release carries, which is what
+reading `SHA256SUMS` gives it.
+
 Generated release notes are a commit list. When a release needs a narrative,
 commit the curated text as its own file per version, put it above the generated
 body in the draft before undrafting, and add the same text above the generated
@@ -382,7 +407,7 @@ Exercise the installed artifact at the boundary the consumer uses.
 | Native Node package   | Wrapper and sidecar versions, platform selection, a packed binding in a [clean consumer](node.md#verify-the-development-and-consumer-paths), a musl host load |
 | CLI on npm            | [Install the packed wrapper in a clean consumer](#distribute-a-cli-through-npm): platform resolution, the launch version check, and the binary's `--version`  |
 | Downloaded CLI        | Verify and smoke-test the archive with the [installer template](../assets/common/install.sh) and its [offline harness](../assets/common/test-install.sh)      |
-| Homebrew formula      | Validate the formula and install/test its referenced artifact                                                                                                 |
+| Homebrew formula      | Check that the generated formula names assets and checksums the release carries; `brew install --build-from-source` and `brew test` run in the tap            |
 | Git-installed package | Verify the Git consumer path and keep required built files committed and current                                                                              |
 
 Use package validators where they cover the contract. Commit built output only
