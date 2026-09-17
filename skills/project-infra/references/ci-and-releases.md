@@ -275,7 +275,11 @@ with its `.sha256` and an optional Sigstore bundle. `finish-release` is the
 single gate job: it asserts the expected asset set, assembles one `SHA256SUMS`,
 and undrafts, so the
 [artifact checks](#verify-the-artifact-consumers-receive) decide what that gate
-has to find. The [publish-binaries excerpt](../assets/ci/publish-binaries.yml)
+has to find. The [installer template](../assets/common/install.sh) consumes
+exactly that set of assets under exactly those names, and the
+[offline harness](../assets/common/test-install.sh) beside it proves its
+refusals against a fixture release rather than a published one.
+The [publish-binaries excerpt](../assets/ci/publish-binaries.yml)
 wires both into a matrix whose `workflow_dispatch` input resumes a failed
 publish by tag. A Rust CLI adds `[package.metadata.binstall]` pointing at the
 same archive names, so `cargo binstall` resolves the release's archives instead
@@ -318,7 +322,7 @@ Exercise the installed artifact at the boundary the consumer uses.
 | Rust crate            | Package, then [test and install the packaged result](rust.md#share-the-local-and-ci-checks); verify the [API contract](rust.md#share-the-local-and-ci-checks) |
 | Native Node package   | Wrapper and sidecar versions, platform selection, a packed binding in a [clean consumer](node.md#verify-the-development-and-consumer-paths), a musl host load |
 | CLI on npm            | [Install the packed wrapper in a clean consumer](#distribute-a-cli-through-npm): platform resolution, the launch version check, and the binary's `--version`  |
-| Downloaded CLI        | Smoke-test the binary and verify `<name>-<version>-<target>.tar.gz` against its `.sha256`, `SHA256SUMS`, and `.sigstore.json` bundle                          |
+| Downloaded CLI        | Verify and smoke-test the archive with the [installer template](../assets/common/install.sh) and its [offline harness](../assets/common/test-install.sh)      |
 | Homebrew formula      | Validate the formula and install/test its referenced artifact                                                                                                 |
 | Git-installed package | Verify the Git consumer path and keep required built files committed and current                                                                              |
 

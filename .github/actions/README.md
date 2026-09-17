@@ -458,7 +458,10 @@ That is the reason for a bundle rather than `actions/attest-build-provenance`:
 an attestation lives with the repository and is verified through
 `gh attestation verify`, which needs the `gh` CLI and an authenticated API call,
 while an installer script already fetching the archive can fetch one more file.
-A repository that wants both can add the attestation action beside this one.
+The [installer template](../../skills/project-infra/assets/common/install.sh)
+is that script: it consumes exactly the assets this action and `finish-release`
+publish, under exactly those names. A repository that wants both can add the
+attestation action beside this one.
 
 ## `finish-release`
 
