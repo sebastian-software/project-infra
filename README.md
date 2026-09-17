@@ -48,6 +48,7 @@ app discovery, customization, and removal.
 | Understand architectural choices               | [ADRs](docs/adr/README.md)                          |
 | Explore open design questions, including hooks | [RFCs](docs/rfcs/README.md)                         |
 | Improve the skill or documentation             | [Contributing](CONTRIBUTING.md)                     |
+| Reference a shared GitHub Action               | [Composite actions](.github/actions/README.md)      |
 
 Run `./scripts/check.sh` before proposing a change.
 

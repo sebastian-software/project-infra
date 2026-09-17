@@ -35,6 +35,11 @@ if failed:
 print(f"TOML check passed: {len(files)} files.")
 PY
 
+# The shared action checks that every `uses:` names a full commit SHA. Running
+# it here holds this repository to the rule it publishes.
+echo "==> Action pins in this repository's workflows"
+node .github/actions/check-action-pins/check-action-pins.mjs .github/workflows .github/actions
+
 echo "==> Shell configuration excerpts"
 for script in $(find skills -name '*.sh'); do
   sh -n "$script"
