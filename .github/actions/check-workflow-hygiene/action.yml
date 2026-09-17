@@ -1,0 +1,50 @@
+name: Check workflow hygiene
+description: >-
+  Fail when a job has no timeout, a workflow leaves its token scope implicit, a
+  pull-request workflow does not cancel superseded runs, or the named aggregate
+  gate job is missing, incomplete, or skipped after a failure.
+
+inputs:
+  paths:
+    description: >-
+      Newline- or space-separated files and directories to scan. Directories are
+      walked recursively for *.yml and *.yaml.
+    required: false
+    default: .github/workflows
+  rules:
+    description: >-
+      Comma-separated subset of `timeouts,permissions,concurrency` to apply. The
+      gate rule is separate; it follows `gate-job`.
+    required: false
+    default: timeouts,permissions,concurrency
+  gate-job:
+    description: >-
+      Name of the aggregate job that branch protection requires. Empty leaves
+      the gate rule off, which is what a repository running its checks in one
+      job wants.
+    required: false
+    default: ""
+  gate-workflow:
+    description: File name of the workflow that holds the gate job.
+    required: false
+    default: check.yml
+
+runs:
+  using: composite
+  steps:
+    - name: Check workflow hygiene
+      shell: bash
+      env:
+        INPUT_PATHS: ${{ inputs.paths }}
+        INPUT_RULES: ${{ inputs.rules }}
+        INPUT_GATE_JOB: ${{ inputs.gate-job }}
+        INPUT_GATE_WORKFLOW: ${{ inputs.gate-workflow }}
+      run: |
+        # Word splitting is the point for `paths`: it is a list. The remaining
+        # inputs stay quoted, so each one reaches the script as one argument.
+        # shellcheck disable=SC2086
+        node "$GITHUB_ACTION_PATH/check-workflow-hygiene.mjs" \
+          "--rules=$INPUT_RULES" \
+          "--gate-job=$INPUT_GATE_JOB" \
+          "--gate-workflow=$INPUT_GATE_WORKFLOW" \
+          $INPUT_PATHS

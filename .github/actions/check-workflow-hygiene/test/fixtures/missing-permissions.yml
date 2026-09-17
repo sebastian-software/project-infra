@@ -1,0 +1,13 @@
+# No top-level `permissions:` block; the push-only trigger needs no concurrency.
+name: Missing permissions
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo build

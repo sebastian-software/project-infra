@@ -116,6 +116,8 @@ Node.js 22.20.0 or newer and Python 3.11 or newer, and it writes nothing:
 | `oxfmt --check`          | Formatting, and a parse of every Markdown, JSON, YAML, and TypeScript file                                             |
 | `scripts/check-docs.mjs` | Relative links and heading anchors, links that would leave the installed package, and the skill's required frontmatter |
 | `tomllib`                | The TOML configuration excerpts, which oxfmt does not parse                                                            |
+| The shared action checks | This repository's own workflows, held to the pin and hygiene rules it publishes                                        |
+| `node --test`            | The workflow-hygiene rules, against the fixture workflows beside the action                                            |
 | `sh -n`                  | The shell configuration excerpts                                                                                       |
 
 Run `npx oxfmt@0.68.0 .` to apply formatting. Keep the gate fast and read-only.

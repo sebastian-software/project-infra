@@ -1,0 +1,26 @@
+# The gate job names nothing in `needs:` and carries no `if: always()`, so it
+# reports success while the job beside it fails.
+name: Weak gate
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weak-gate-${{ github.ref }}
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo node
+
+  gate:
+    needs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo gate
