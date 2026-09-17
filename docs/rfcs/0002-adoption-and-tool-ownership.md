@@ -41,8 +41,6 @@ exposes ambiguity or extra work.
 1. Which project and update make the first useful trial?
 2. How should repo-template consume the shared guidance without duplicating it?
 3. How should dependency automation update the project-local installation?
-4. Which license applies to the distributed skill? The repository has no license
-   file yet.
 
 ## Related proposals
 

@@ -16,6 +16,7 @@ here on, an accepted record is superseded rather than rewritten.
 | [0003](0003-distribute-a-self-contained-skill-at-project-scope.md)    | Distribute a self-contained skill at project scope    | accepted |
 | [0004](0004-keep-the-portable-core-separate-from-app-integrations.md) | Keep the portable core separate from app integrations | accepted |
 | [0005](0005-review-instructions-instead-of-benchmarking-agents.md)    | Review instructions instead of benchmarking agents    | accepted |
+| [0006](0006-dual-license-under-apache-2-0-and-mit.md)                 | Dual license under Apache 2.0 and MIT                 | accepted |
 
 See [the contribution guide](../../CONTRIBUTING.md) for the record lifecycle and
 [the RFCs](../rfcs/README.md) for open proposals.
