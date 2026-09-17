@@ -1,0 +1,11 @@
+# A crate that carries its own version.
+[package]
+name = "tool"
+version = "1.2.3"
+edition = "2024"
+
+[dependencies]
+serde = { version = "9.9.9" }
+
+[dependencies.clap]
+version = "8.8.8"

@@ -1,7 +1,8 @@
 # Shared composite actions
 
-Six composite actions that the organization's release and check workflows would
-otherwise reimplement: crates.io retry loops, napi platform matrices, the
+Eight composite actions that the organization's release and check workflows
+would otherwise reimplement: crates.io retry loops, napi platform matrices,
+release-asset packaging and the gate that publishes a draft release, the
 lifecycle of a tracking issue, an action-pin checker, and a workflow-hygiene
 checker. They are ordinary actions in this repository, so consumers reference
 them by path and commit SHA:
@@ -268,3 +269,147 @@ indentation is part of the rule: a job is a key at exactly two spaces under
 What the scan cannot see: a property inherited through a reusable workflow or a
 YAML anchor, a trigger list spread across several lines, and whether a timeout
 is long enough or a permission set minimal. Those stay review questions.
+
+## `package-binary`
+
+Packages one matrix job's binary into `<name>-<version>-<target>.tar.gz` and
+attaches it, its checksum, and its signature to the GitHub release of a tag.
+The consumer owns the matrix and the build; this action owns everything between
+the built file and the release.
+
+| Input          | Default               | Meaning                                                          |
+| -------------- | --------------------- | ---------------------------------------------------------------- |
+| `tag`          | —                     | Release tag this build belongs to                                |
+| `binary`       | —                     | Path to the built executable, with or without `.exe`             |
+| `target`       | —                     | Rust target triple, used in the archive name                     |
+| `name`         | `""`                  | Archive base name; empty derives `<binary>-<version>-<target>`   |
+| `version-file` | `Cargo.toml`          | File the version is read from                                    |
+| `extra`        | `""`                  | Newline-separated files and directories to include               |
+| `checksum`     | `per-asset`           | `per-asset` writes `<archive>.sha256`; `none` writes no checksum |
+| `sign`         | `false`               | `true` writes `<archive>.sigstore.json`                          |
+| `release`      | `true`                | Upload the assets to the release of `tag`                        |
+| `directory`    | `dist`                | Where the staged tree and the archive are written                |
+| `token`        | `${{ github.token }}` | Token for the `gh release upload` call                           |
+
+Outputs: `archive`, `checksum` (empty when `checksum` is `none`), `bundle`
+(empty unless `sign`), `name`, and `version`.
+
+```yaml
+- uses: sebastian-software/project-infra/.github/actions/package-binary@<sha> # v0.0.0
+  with:
+    tag: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+    target: ${{ matrix.target }}
+    binary: target/${{ matrix.target }}/release/tool
+    sign: true
+```
+
+The job needs `contents: write` to upload and `id-token: write` when it signs.
+The [publish-binaries excerpt](../../skills/project-infra/assets/ci/publish-binaries.yml)
+wires it into a matrix with the gate below.
+
+Three properties make the archive match what the release claims:
+
+- The version is read from the manifest in the checkout, not from the tag, and
+  the tag has to end with it at a separator — `tool-v1.2.3`, `v1.2.3`, and
+  `1.2.3` name version 1.2.3 while `v1.12.3` does not name 12.3. A workspace
+  member inheriting `version.workspace = true` resolves to the workspace's
+  version, and `version-file` also reads a `package.json` or a plain version
+  file.
+- `HEAD` has to be the commit the tag names, which fails a job that checked out
+  a branch instead of the tag and would otherwise attach newer sources to an
+  existing version.
+- An `extra` entry that does not exist fails the job. A missing completion file
+  or license is otherwise a short archive that nothing downstream reports.
+
+`checksum: per-asset` writes `<archive>.sha256` beside the archive, which is
+what one download needs to verify itself. There is no combined mode here: the
+release-wide `SHA256SUMS` is assembled once by `finish-release` from those
+files, so the release's checksum layout is decided in one place instead of in
+every matrix job.
+
+The archive holds one top-level directory named like the archive itself, so an
+extraction never scatters files and `bin-dir` stays derivable for
+`cargo binstall`. Every platform gets `.tar.gz`, Windows included: the runner
+images carry `tar`, and one format keeps the download name single-valued for an
+installer script and for `[package.metadata.binstall]`. Each entry of `extra`
+keeps its own name inside the archive, so a directory such as `completions`
+arrives as a directory.
+
+A re-run is safe in both directions: the staged tree is removed before it is
+rebuilt, so a reused workspace cannot leak a previous attempt into the archive,
+and the upload uses `--clobber`, so a leg that failed after a partial upload
+replaces its own assets instead of stopping on them.
+
+`sign: true` installs cosign and runs `cosign sign-blob --yes --bundle`, which
+writes a Sigstore bundle carrying the signature, the short-lived certificate,
+and the transparency-log entry. The certificate's identity is the workflow that
+built the archive, so a consumer verifies provenance with one more download and
+no API call:
+
+```sh
+cosign verify-blob --bundle tool-1.2.3-<target>.tar.gz.sigstore.json \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github\.com/<owner>/<repo>/\.github/workflows/' \
+  tool-1.2.3-<target>.tar.gz
+```
+
+That is the reason for a bundle rather than `actions/attest-build-provenance`:
+an attestation lives with the repository and is verified through
+`gh attestation verify`, which needs the `gh` CLI and an authenticated API call,
+while an installer script already fetching the archive can fetch one more file.
+A repository that wants both can add the attestation action beside this one.
+
+## `finish-release`
+
+The gate between a draft release and a public one: it asserts that the release
+carries the assets the matrix was supposed to upload, assembles one
+`SHA256SUMS`, and undrafts. Run it once, after the matrix.
+
+| Input      | Default               | Meaning                                                 |
+| ---------- | --------------------- | ------------------------------------------------------- |
+| `tag`      | —                     | Release tag to check and publish                        |
+| `expected` | —                     | Asset names, one per line, or a single integer count    |
+| `sums`     | `false`               | Assemble and upload `SHA256SUMS`                        |
+| `undraft`  | `true`                | Run `gh release edit --draft=false` after the assertion |
+| `token`    | `${{ github.token }}` | Token for the `gh release` calls                        |
+
+Output `assets` carries the JSON list of asset names found on the release.
+
+```yaml
+- uses: sebastian-software/project-infra/.github/actions/finish-release@<sha> # v0.0.0
+  with:
+    tag: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+    sums: true
+    expected: |
+      tool-1.2.3-x86_64-unknown-linux-gnu.tar.gz
+      tool-1.2.3-x86_64-unknown-linux-gnu.tar.gz.sha256
+```
+
+The job needs `contents: write`. A matrix reports success per leg, which says
+that each job ran — not that each asset arrived: an upload can fail after the
+build, a leg can be skipped by a condition, and a re-run can produce an asset
+under a name nothing else reads. What a user downloads is the release, so the
+release's own asset list is what gets asserted, and a missing asset fails the
+job while the release stays a draft.
+
+The name form is the strict one: it also catches a target that uploaded under
+the wrong name, which an integer count cannot see. The count is a minimum, and
+extra assets are never a problem — a release can also carry an installer
+script, a generated formula, or the `SHA256SUMS` of a previous run. A line
+starting with `#` is a comment, so a list of a dozen names stays grouped by
+target. `SHA256SUMS` itself does not belong in the list; this action uploads it
+after the check.
+
+The order is the point. `sums: true` downloads every `*.sha256` asset and
+assembles them into one `SHA256SUMS` in the format `sha256sum -c` reads, sorted
+by file name, after the completeness check, so the combined list never
+describes a partial release and cannot disagree with the per-asset files it was
+built from. A checksum whose record names a different file than its own asset
+fails the job rather than shipping a line that verifies nothing. Undrafting is
+last: registry publishing jobs take `needs:` on this job, so no immutable
+registry version exists for a release the repository could not finish.
+
+Re-running is the recovery path. `gh release edit --draft=false` on a release
+that is already public succeeds, and `SHA256SUMS` is uploaded with `--clobber`,
+so a dispatch that resumes a failed publish by tag takes the same path as the
+first run.

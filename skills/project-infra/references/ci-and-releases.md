@@ -25,8 +25,8 @@ cancellation, so an omission fails the workflow's own run.
 
 ## Use the organization's shared actions
 
-Six composite actions carry publishing, platform, reporting, and
-workflow-checking behavior that repositories would otherwise reimplement.
+Eight composite actions carry publishing, platform, release-asset, reporting,
+and workflow-checking behavior that repositories would otherwise reimplement.
 Reference them by path and commit SHA; do not copy them into a repository.
 
 | Action                   | Use it for                                                                                                                                                                            |
@@ -34,6 +34,8 @@ Reference them by path and commit SHA; do not copy them into a repository.
 | `publish-crates`         | Publishing a workspace's crates in dependency order, with an already-published check and index-propagation waits that make a re-run safe                                              |
 | `publish-npm`            | Publishing packages in order with provenance, deriving the dist-tag from the version so a candidate never lands on `latest`                                                           |
 | `napi-matrix`            | The organization's napi platform list and the derived sidecar, artifact, and binary names                                                                                             |
+| `package-binary`         | Staging a built binary into `<name>-<version>-<target>.tar.gz` with its checksum and optional Sigstore bundle, after checking that tag, manifest version, and HEAD agree              |
+| `finish-release`         | Asserting that a draft release carries every expected asset, assembling `SHA256SUMS`, and publishing it, so an incomplete release stays a draft                                       |
 | `open-or-refresh-issue`  | Reporting a run that has no pull request into one tracking issue: opened once, refreshed in place afterwards, and closed with a comment once the condition clears                     |
 | `check-action-pins`      | Failing a workflow whose `uses:` entries are not full commit SHAs                                                                                                                     |
 | `check-workflow-hygiene` | Failing a workflow whose jobs carry no timeout, whose token scope stays implicit, that leaves superseded pull-request runs going, or whose aggregate gate job is missing or skippable |
@@ -182,11 +184,18 @@ the version yet. Undraft only after a job has listed the release's assets and
 asserted that the expected set is complete; registry publication follows that
 gate, so no immutable registry version exists for a release the repository could
 not finish. Pair the draft with `force-tag-creation`, which lets a rerun tag a
-release that already exists instead of stopping. No shared action covers the
-upload-and-verify shape yet: implement it as one upload job per platform
-followed by a single gate job, and let the
+release that already exists instead of stopping. The shared `package-binary`
+action covers the per-platform half: it checks that the tag, the manifest
+version, and `HEAD` agree before attaching `<name>-<version>-<target>.tar.gz`
+with its `.sha256` and an optional Sigstore bundle. `finish-release` is the
+single gate job: it asserts the expected asset set, assembles one `SHA256SUMS`,
+and undrafts, so the
 [artifact checks](#verify-the-artifact-consumers-receive) decide what that gate
-has to find.
+has to find. The [publish-binaries excerpt](../assets/ci/publish-binaries.yml)
+wires both into a matrix whose `workflow_dispatch` input resumes a failed
+publish by tag. A Rust CLI adds `[package.metadata.binstall]` pointing at the
+same archive names, so `cargo binstall` resolves the release's archives instead
+of building from source.
 
 A project moving toward a major version can carry a publication hold: a small
 committed JSON file with `minimumMajor`, `publicationEnabled`, and `reason`,
@@ -224,7 +233,7 @@ Exercise the installed artifact at the boundary the consumer uses.
 | npm package           | [Pack and install in a clean consumer](node.md#verify-the-development-and-consumer-paths): archive against `files`, every entry point, each export condition  |
 | Rust crate            | Package, then [test and install the packaged result](rust.md#share-the-local-and-ci-checks); verify the [API contract](rust.md#share-the-local-and-ci-checks) |
 | Native Node package   | Check wrapper and sidecar versions, platform selection, and a packed binding loading in a [clean consumer](node.md#verify-the-development-and-consumer-paths) |
-| Downloaded CLI        | Smoke-test the binary and verify published checksums                                                                                                          |
+| Downloaded CLI        | Smoke-test the binary and verify `<name>-<version>-<target>.tar.gz` against its `.sha256`, `SHA256SUMS`, and `.sigstore.json` bundle                          |
 | Homebrew formula      | Validate the formula and install/test its referenced artifact                                                                                                 |
 | Git-installed package | Verify the Git consumer path and keep required built files committed and current                                                                              |
 

@@ -1,0 +1,7 @@
+{
+  "assets": [
+    { "name": "tool-1.2.3-x86_64-unknown-linux-gnu.tar.gz" },
+    { "name": "tool-1.2.3-x86_64-unknown-linux-gnu.tar.gz.sha256" }
+  ],
+  "isDraft": true
+}
