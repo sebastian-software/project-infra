@@ -72,9 +72,11 @@ When Claude integration is used, keep `CLAUDE.md` as a small pointer through its
 supported import mechanism. Use the corresponding mechanism for other apps.
 One source of instructions reduces conflicts between human and agent workflows.
 
-Keep local hooks fast and predictable. Document installation, prerequisites,
-and whether they write files. Run long-running agent updates as separate,
-explicit tasks so ordinary development does not depend on an agent session.
+Document the project's Git hooks and their one-time enable command with the
+other setup steps; their shape is owned by the
+[common workflow](common.md#provide-one-local-verification-path). Run
+long-running agent updates as separate, explicit tasks so ordinary development
+does not depend on an agent session.
 
 ## Keep decisions and task guides easy to find
 

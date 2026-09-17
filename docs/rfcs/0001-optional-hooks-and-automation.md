@@ -36,7 +36,9 @@ active integrations are enabled.
 
 Git defines `post-merge`, `pre-commit`, and `pre-push` events. Agent apps define
 their own lifecycle hooks, such as Claude Code's `SessionStart`. Those names and
-capabilities are not a portable cross-app API.
+capabilities are not a portable cross-app API. Plain Git hooks that run a
+project's own checks are a settled convention owned by the skill's common
+reference; this RFC concerns agent-triggered automation only.
 
 ## Execution behavior to design
 
