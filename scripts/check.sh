@@ -48,11 +48,12 @@ node .github/actions/check-action-pins/check-action-pins.mjs .github/workflows .
 echo "==> Workflow hygiene in this repository's workflows"
 node .github/actions/check-workflow-hygiene/check-workflow-hygiene.mjs .github/workflows
 
-# The hygiene rules are code, so they carry fixtures. Node runs them; nothing is
+# The hygiene rules and the tracking-issue lifecycle are code, so they carry
+# tests and fixtures. Node runs every suite beside an action; nothing is
 # installed.
-echo "==> Workflow hygiene action tests"
-node --test --test-reporter=dot ".github/actions/check-workflow-hygiene/test/*.test.mjs"
-echo "Workflow hygiene tests passed."
+echo "==> Composite action tests"
+node --test --test-reporter=dot ".github/actions/*/test/*.test.mjs"
+echo "Action tests passed."
 
 # Git hook excerpts carry no suffix, so the hook directory is matched by path.
 echo "==> Shell configuration excerpts"
