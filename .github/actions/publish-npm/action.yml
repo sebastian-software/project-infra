@@ -2,21 +2,27 @@ name: Publish npm packages
 description: >-
   Publish one or more npm packages with provenance, in the given order, deriving
   the dist-tag from the version's prerelease suffix so a release candidate never
-  lands on `latest`. Authenticates through npm Trusted Publishing unless a
+  lands on `latest`. Checks that every package name exists before the first
+  publish, skips a version the registry already carries, and verifies the
+  release afterwards. Authenticates through npm Trusted Publishing unless a
   fallback token is supplied.
 
 inputs:
   packages:
     description: >-
-      Ordered package directories, platform sidecars before the main package —
-      the main package's optional dependencies must exist before it is
-      installable. Newline- or space-separated, relative to `working-directory`.
+      Ordered package directories or packed `.tgz` tarballs, platform sidecars
+      before the main package — the main package's optional dependencies must
+      exist before it is installable. Newline- or space-separated, relative to
+      `working-directory`. Each entry is prefixed with `./` unless it already
+      names a path, because npm reads `tool` as a package on the registry and
+      `npm/tool` as the GitHub shorthand `owner/repo`.
     required: false
     default: "."
   dist-tag:
     description: >-
       npm dist-tag. Empty derives it from the version: `1.2.3` publishes to
-      `latest`, `1.2.3-rc.1` to `rc`, `1.2.3-next.4` to `next`.
+      `latest`, `1.2.3-rc.1` to `rc`, `1.2.3-next.4` to `next`. An explicit
+      `latest` is refused for a prerelease version.
     required: false
     default: ""
   access:
@@ -36,6 +42,33 @@ inputs:
       Publishing, because the package does not exist yet.
     required: false
     default: ""
+  preflight-first-publish:
+    description: >-
+      Before publishing anything, fail when a listed package name has never been
+      published, because Trusted Publishing cannot mint a token for it and the
+      failure would otherwise land mid-list. Skipped when `token` is set, and
+      reported as a warning when `dry-run` is on.
+    required: false
+    default: "true"
+  verify:
+    description: >-
+      After the loop, poll the registry until every listed package resolves at
+      its version, so a release that reached npm only in part fails the job.
+    required: false
+    default: "true"
+  verify-timeout:
+    description: >-
+      Seconds to keep polling for a package the registry does not serve yet, up
+      to 1800. Zero requires every version on the first read.
+    required: false
+    default: "120"
+  dry-run:
+    description: >-
+      Rehearse the release: `npm publish --dry-run` for every package, the
+      preflight in warning mode, and no verification, because nothing is
+      published.
+    required: false
+    default: "false"
   working-directory:
     description: Directory the npm commands run in.
     required: false
@@ -54,54 +87,15 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
-        PACKAGES: ${{ inputs.packages }}
-        DIST_TAG: ${{ inputs.dist-tag }}
-        ACCESS: ${{ inputs.access }}
-        PROVENANCE: ${{ inputs.provenance }}
+        INPUT_PACKAGES: ${{ inputs.packages }}
+        INPUT_DIST_TAG: ${{ inputs.dist-tag }}
+        INPUT_ACCESS: ${{ inputs.access }}
+        INPUT_PROVENANCE: ${{ inputs.provenance }}
+        INPUT_PREFLIGHT_FIRST_PUBLISH: ${{ inputs.preflight-first-publish }}
+        INPUT_VERIFY: ${{ inputs.verify }}
+        INPUT_VERIFY_TIMEOUT: ${{ inputs.verify-timeout }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        # npm reads the token from this variable, and the script reads it to
+        # decide whether the first-publish preflight applies.
         NODE_AUTH_TOKEN: ${{ inputs.token }}
-      run: |
-        set -euo pipefail
-
-        # Word splitting is the point: `packages` is a list.
-        # shellcheck disable=SC2206
-        packages=($PACKAGES)
-        if [ "${#packages[@]}" -eq 0 ]; then
-          echo "::error::No package directories given."
-          exit 1
-        fi
-
-        package_version() {
-          node -p "JSON.parse(require('node:fs').readFileSync('$1/package.json','utf8')).version"
-        }
-
-        tag="$DIST_TAG"
-        if [ -z "$tag" ]; then
-          # The last entry is the main package, and it carries the version the
-          # dist-tag is derived from. Indexed the long way round for bash 3.2.
-          version="$(package_version "${packages[$((${#packages[@]} - 1))]}")"
-          if [[ "$version" == *-* ]]; then
-            prerelease="${version#*-}"
-            identifier="${prerelease%%.*}"
-            identifier="${identifier%%+*}"
-            # A purely numeric identifier (1.2.3-1) is not a usable dist-tag.
-            if [[ "$identifier" =~ ^[0-9]+$ ]]; then
-              tag="next"
-            else
-              tag="$identifier"
-            fi
-          else
-            tag="latest"
-          fi
-          echo "Derived dist-tag ${tag} from version ${version}."
-        fi
-        echo "dist-tag=${tag}" >> "$GITHUB_OUTPUT"
-
-        for package in "${packages[@]}"; do
-          echo "::group::npm publish ${package} (${tag})"
-          if [ "$PROVENANCE" = "true" ]; then
-            npm publish "$package" --access "$ACCESS" --tag "$tag" --provenance
-          else
-            npm publish "$package" --access "$ACCESS" --tag "$tag"
-          fi
-          echo "::endgroup::"
-        done
+      run: node "$GITHUB_ACTION_PATH/publish-npm.mjs"
