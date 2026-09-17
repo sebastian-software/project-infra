@@ -44,7 +44,11 @@ a version.
 
 Limit build-script permissions and dependency overrides to actual needs. Keep
 compatibility-sensitive tool versions together, following the lint configuration
-package's supported matrix. Dependency automation is covered in [CI and releases](ci-and-releases.md).
+package's supported matrix. When the type check should already run a newer
+TypeScript major than that matrix supports, install both majors through an
+aliased dependency such as `@typescript/typescript6`, so the compiler can move
+forward while the tools that consume its API keep the version they support.
+Dependency automation is covered in [CI and releases](ci-and-releases.md).
 
 ## Formatting and linting
 
@@ -75,13 +79,24 @@ narrow. Remove a lint check only when its required behavior remains covered.
 
 Enable `strict`, `noUncheckedIndexedAccess`, and `exactOptionalPropertyTypes`.
 These expose unchecked values and ambiguous optional fields before they become
-runtime failures. Fix the affected code when adopting the flags. The
+runtime failures. Add `noImplicitOverride`, which requires the `override`
+keyword on a member that replaces a base class member, so renaming or removing
+that member becomes an error instead of a silently detached method. Add
+`noImplicitReturns`, which rejects a function that returns a value on one path
+and falls off the end on another; the strict family checks neither case. Add
+`verbatimModuleSyntax` and `isolatedModules` to keep the sources within what a
+single-file transformer such as Oxc can compile: type-only imports have to be
+written as `import type` so they erase predictably, and constructs that need
+cross-file type information fail the type check instead of the build. Fix the
+affected code when adopting the flags. The
 [tsconfig excerpt](../assets/node/tsconfig.json) enables them with bundler
 resolution.
 
 Use ESM for new packages. Keep required public entry points compatible when
 updating an existing package. Match TypeScript module resolution to the actual
-runtime or bundler, and generate framework types before checks that need them.
+runtime or bundler, generate framework types before checks that need them, and
+list a framework's ambient declarations in `types` when it serves virtual
+modules the compiler cannot resolve on its own.
 
 ## Verify the development and consumer paths
 
@@ -89,6 +104,17 @@ Use Vite for application builds, tsdown for distributable package bundles, and
 Vitest for tests. Configure only the outputs and environments the product needs.
 The [tsdown excerpt](../assets/node/tsdown.config.ts) configures an ESM package
 bundle with declarations.
+
+Tests that render components run in the jsdom environment, where the host
+runtime's own globals can displace it: Node 24 and newer define global
+`localStorage` and `sessionStorage` that stay `undefined` unless the process is
+started with `--localstorage-file`, and from Node 26 they shadow jsdom's Web
+Storage, so a suite that passes on Node 22 reads `localStorage` as `undefined`
+and throws on the newer entries of a Node matrix. Reference a `vitest.setup.ts`
+from `setupFiles` that installs a minimal in-memory `Storage` only when the
+global is missing, which leaves jsdom's own implementation in place. The same
+file is the place for DOM methods jsdom does not implement, such as
+`Element.prototype.scrollIntoView`.
 
 From a clean install, the project gate should cover formatting, lint, types,
 tests, and the build. A successful source build is not sufficient for a published
