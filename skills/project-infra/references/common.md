@@ -14,18 +14,31 @@ package. Add a runtime only when the project needs it.
 
 ## Provide one local verification path
 
-Provide one documented complete local gate. Use `pnpm check` for a new Node
-project and `scripts/check.sh` with native Cargo commands for a new Rust project;
-the [package scripts](../assets/node/package.json) and
-[check script](../assets/rust/scripts/check.sh) excerpts show the shape. Keep an
-established, equally clear entry point when renaming it would only add churn.
+Provide one documented complete local gate and give it one name across stacks:
+`mise run check`. The task wraps the implementation its stack already expects —
+`scripts/check.sh` with native Cargo commands in a Rust project, `pnpm check` in
+a Node project, and both plus the README check, chained with `depends`, in a
+mixed project. A second task, `mise run fast`, runs formatting, the linter, and
+the unit tests for the loop between edits. Two task names give the fast loop and
+the complete gate an address a contributor can run, instead of the prose list
+each document otherwise restates in its own wording, and a project that already
+pins a tool with mise needs nothing new to define them. The
+[mise.toml excerpt](../assets/common/mise.toml) shows both tasks; the
+[check script](../assets/rust/scripts/check.sh) and
+[package scripts](../assets/node/package.json) excerpts show what `check` calls.
+
+CI runs that same `mise run check` after `jdx/mise-action`, as the
+[workflow excerpt](../assets/ci/check.yml) does, so the documented command and
+the workflow step stay one string. In a Node-only project that needs no
+mise-managed tool, `mise run check` is `pnpm check` under a second name and is
+optional; keep the established entry point when renaming it would only add
+churn.
 
 Local work and CI must share check implementations so a contributor can
 reproduce failures without reverse-engineering a workflow. Keep checks
 non-writing, with separate fix and generation commands. Builds may create
 ignored output; changes to tracked generated files must be explicit.
 
-If a faster development loop is useful, distinguish it from the complete gate.
 Document prerequisites for credential-dependent checks, benchmarks, fuzzing, and
 external fixtures. Run checks relevant to the change rather than making every
 edit depend on every optional system.
