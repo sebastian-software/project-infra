@@ -1,0 +1,14 @@
+# The flow form of `on:` declares the same pull-request trigger.
+name: Flow triggers
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo build

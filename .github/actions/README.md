@@ -1,9 +1,9 @@
 # Shared composite actions
 
-Four composite actions that the organization's release workflows would
-otherwise reimplement: crates.io retry loops, napi platform matrices, and an
-action-pin checker. They are ordinary actions in this repository, so consumers
-reference them by path and commit SHA:
+Five composite actions that the organization's release and check workflows
+would otherwise reimplement: crates.io retry loops, napi platform matrices, an
+action-pin checker, and a workflow-hygiene checker. They are ordinary actions in
+this repository, so consumers reference them by path and commit SHA:
 
 ```yaml
 - uses: sebastian-software/project-infra/.github/actions/publish-crates@<sha> # v0.0.0
@@ -158,3 +158,52 @@ mentioning the word are not steps. The one shape the line-based scan cannot
 tell apart is a `run:` block that writes YAML containing a `uses` key at the
 start of its own line. Use `allow` for that, and for a reference that genuinely
 cannot be a SHA; every entry belongs in a review.
+
+## `check-workflow-hygiene`
+
+Fails when a job can run unbounded, a workflow leaves its token scope implicit,
+a pull-request workflow keeps superseded runs going, or the aggregate gate job
+branch protection requires is missing or ineffective.
+
+| Input           | Default                            | Meaning                                                     |
+| --------------- | ---------------------------------- | ----------------------------------------------------------- |
+| `paths`         | `.github/workflows`                | Files and directories to scan; directories recursively      |
+| `rules`         | `timeouts,permissions,concurrency` | Comma-separated subset of the three workflow rules to apply |
+| `gate-job`      | `""`                               | Name of the aggregate job; empty leaves the gate rule off   |
+| `gate-workflow` | `check.yml`                        | File name of the workflow that holds the gate job           |
+
+```yaml
+- uses: sebastian-software/project-infra/.github/actions/check-workflow-hygiene@<sha> # v0.0.0
+  with:
+    gate-job: gate
+```
+
+The four rules:
+
+- `timeouts` — every job carries `timeout-minutes:`, so a hung job stops
+  instead of holding a runner until GitHub's six-hour default expires;
+- `permissions` — the workflow has a top-level `permissions:` block, so the
+  token scope it grants is a decision in the file rather than whatever the
+  repository default happens to be;
+- `concurrency` — a workflow triggered by `pull_request`, in either the block
+  or the flow form of `on:`, has a top-level `concurrency:` block, so a new
+  push cancels the run it supersedes;
+- `gate` — off until `gate-job` names a job. The workflow named by
+  `gate-workflow` then has to contain that job with a `needs:` list and
+  `if: always()`: without the condition a failed job leaves the gate skipped,
+  and branch protection reads a skipped required check as satisfied.
+
+A job that calls a reusable workflow (`uses:` at job level) is exempt from the
+`timeouts` rule, because GitHub rejects `timeout-minutes` there; the called
+workflow carries its own timeouts. A repository that runs its checks in one job
+leaves `gate-job` empty: that job is already the stable required name.
+
+The scan is line-based, so it needs no dependency install in the job, and it
+reads the two-space indentation the organization's formatter produces. The
+indentation is part of the rule: a job is a key at exactly two spaces under
+`jobs:`, and a job's own settings sit at exactly four, so a step-level
+`timeout-minutes:` is not mistaken for one that bounds the job.
+
+What the scan cannot see: a property inherited through a reusable workflow or a
+YAML anchor, a trigger list spread across several lines, and whether a timeout
+is long enough or a permission set minimal. Those stay review questions.
