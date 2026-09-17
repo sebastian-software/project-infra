@@ -1,0 +1,103 @@
+name: Finish release
+description: >-
+  Assert that a release carries the assets its build jobs were supposed to
+  upload, optionally assemble one `SHA256SUMS` from the per-asset checksums,
+  and publish the draft release. A missing asset fails the job, so an
+  incomplete release stays a draft.
+
+inputs:
+  tag:
+    description: The release tag to check and publish.
+    required: true
+  expected:
+    description: >-
+      Newline-separated asset names that must be on the release, or a single
+      integer as the minimum number of assets. Names are the strict form: they
+      also catch a target that built under the wrong name. `SHA256SUMS` does
+      not belong in the list; this action uploads it after the check.
+    required: true
+  sums:
+    description: >-
+      `true` downloads every `*.sha256` asset, assembles one `SHA256SUMS` over
+      the files they name, and uploads it.
+    required: false
+    default: "false"
+  undraft:
+    description: >-
+      `true` runs `gh release edit --draft=false` once the assertion passed,
+      which is the moment the version becomes public.
+    required: false
+    default: "true"
+  token:
+    description: Token for the `gh release` calls.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  assets:
+    description: JSON array of the asset names found on the release.
+    value: ${{ steps.verify.outputs.assets }}
+
+runs:
+  using: composite
+  steps:
+    - name: Read the release
+      id: release
+      shell: bash
+      env:
+        GH_REPO: ${{ github.repository }}
+        GH_TOKEN: ${{ inputs.token }}
+        TAG: ${{ inputs.tag }}
+      run: |
+        set -euo pipefail
+
+        work="${RUNNER_TEMP:-.}/finish-release"
+        mkdir -p "$work"
+        gh release view "$TAG" --json assets,isDraft > "$work/release.json"
+        echo "work=$work" >> "$GITHUB_OUTPUT"
+
+    - name: Check the expected assets
+      id: verify
+      shell: bash
+      env:
+        INPUT_EXPECTED: ${{ inputs.expected }}
+        TAG: ${{ inputs.tag }}
+        WORK: ${{ steps.release.outputs.work }}
+      run: node "$GITHUB_ACTION_PATH/finish-release.mjs" verify "$WORK/release.json"
+
+    # One list for an installer to fetch, built from the same per-asset files a
+    # single download verifies against. Assembled after the completeness check,
+    # so it never describes a partial release.
+    - name: Assemble SHA256SUMS
+      if: ${{ inputs.sums == 'true' }}
+      shell: bash
+      env:
+        GH_REPO: ${{ github.repository }}
+        GH_TOKEN: ${{ inputs.token }}
+        TAG: ${{ inputs.tag }}
+        WORK: ${{ steps.release.outputs.work }}
+      run: |
+        set -euo pipefail
+
+        rm -rf "$WORK/sums"
+        if ! gh release download "$TAG" --pattern '*.sha256' --dir "$WORK/sums" --clobber; then
+          echo "::error::No .sha256 assets on ${TAG}; SHA256SUMS is assembled from the per-asset checksums that package-binary uploads."
+          exit 1
+        fi
+
+        node "$GITHUB_ACTION_PATH/finish-release.mjs" sums "$WORK/sums" "$WORK/SHA256SUMS"
+        gh release upload "$TAG" "$WORK/SHA256SUMS" --clobber
+
+    - name: Publish the release
+      if: ${{ inputs.undraft == 'true' }}
+      shell: bash
+      env:
+        GH_REPO: ${{ github.repository }}
+        GH_TOKEN: ${{ inputs.token }}
+        TAG: ${{ inputs.tag }}
+      run: |
+        set -euo pipefail
+
+        # A release that is already public stays public: the call is the same
+        # on a re-run, so resuming a failed publish needs no different path.
+        gh release edit "$TAG" --draft=false

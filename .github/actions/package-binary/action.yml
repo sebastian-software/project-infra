@@ -1,0 +1,209 @@
+name: Package release binary
+description: >-
+  Stage a built binary with the files that ship beside it into
+  `<name>-<version>-<target>.tar.gz`, check that the release tag, the manifest
+  version and HEAD agree, and attach the archive, its SHA-256 checksum and an
+  optional Sigstore bundle to the GitHub release of that tag.
+
+inputs:
+  tag:
+    description: >-
+      The release tag this build belongs to. The action fails unless the tag
+      ends with the version from `version-file` and names the commit that is
+      checked out.
+    required: true
+  binary:
+    description: >-
+      Path to the built executable. A Windows build may be given without its
+      `.exe` suffix; the action resolves it.
+    required: true
+  target:
+    description: The Rust target triple, used in the archive name.
+    required: true
+  name:
+    description: >-
+      Archive base name. Empty derives `<binary>-<version>-<target>`, which is
+      the name an installer and `cargo binstall` reconstruct from the version
+      and the platform.
+    required: false
+    default: ""
+  version-file:
+    description: >-
+      File the version is read from: `version` under `[package]` or
+      `[workspace.package]` for a `.toml`, the `version` field for a `.json`,
+      the trimmed contents for anything else.
+    required: false
+    default: Cargo.toml
+  extra:
+    description: >-
+      Newline-separated files and directories to include beside the binary,
+      such as generated completions, a man page, the README and the licenses.
+      Each entry keeps its own name inside the archive, and an entry that does
+      not exist fails the job rather than shipping a short archive.
+    required: false
+    default: ""
+  checksum:
+    description: >-
+      `per-asset` writes and uploads `<archive>.sha256`; `none` writes no
+      checksum. The release-wide `SHA256SUMS` is assembled once by
+      `finish-release` from these files.
+    required: false
+    default: per-asset
+  sign:
+    description: >-
+      `true` signs the archive with keyless Sigstore and writes
+      `<archive>.sigstore.json`. The job then needs `permissions:
+      id-token: write`.
+    required: false
+    default: "false"
+  release:
+    description: >-
+      `true` uploads the archive and its companions to the release of `tag`
+      with `--clobber`, so a re-run replaces its own assets. The job then needs
+      `permissions: contents: write`.
+    required: false
+    default: "true"
+  directory:
+    description: Directory the staged tree and the archive are written to.
+    required: false
+    default: dist
+  token:
+    description: Token for the `gh release upload` call.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  archive:
+    description: Path to the archive.
+    value: ${{ steps.stage.outputs.archive }}
+  checksum:
+    description: Path to the checksum file, empty when `checksum` is `none`.
+    value: ${{ steps.stage.outputs.checksum }}
+  bundle:
+    description: Path to the Sigstore bundle, empty when `sign` is not `true`.
+    value: ${{ steps.stage.outputs.bundle }}
+  name:
+    description: The archive base name, without the `.tar.gz` suffix.
+    value: ${{ steps.stage.outputs.name }}
+  version:
+    description: The version read from `version-file`.
+    value: ${{ steps.stage.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    # The release is built from the tag, never from a branch: a job that
+    # checked out `main` would attach newer sources to an existing version.
+    - name: Verify the tag names this commit
+      shell: bash
+      env:
+        TAG: ${{ inputs.tag }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "$TAG" ]; then
+          echo "::error::The \`tag\` input is empty."
+          exit 1
+        fi
+        if ! git rev-parse --verify --quiet "refs/tags/${TAG}^{commit}" > /dev/null; then
+          echo "::error::Tag ${TAG} is not in this checkout; check the release tag out (actions/checkout with ref: <tag>)."
+          exit 1
+        fi
+
+        head="$(git rev-parse HEAD)"
+        tagged="$(git rev-parse "refs/tags/${TAG}^{commit}")"
+        if [ "$head" != "$tagged" ]; then
+          echo "::error::HEAD ${head} is not the commit tagged ${TAG} (${tagged}); the archive would carry sources the tag does not name."
+          exit 1
+        fi
+
+    - name: Stage the archive contents
+      id: stage
+      shell: bash
+      env:
+        INPUT_TAG: ${{ inputs.tag }}
+        INPUT_BINARY: ${{ inputs.binary }}
+        INPUT_TARGET: ${{ inputs.target }}
+        INPUT_NAME: ${{ inputs.name }}
+        INPUT_VERSION_FILE: ${{ inputs.version-file }}
+        INPUT_EXTRA: ${{ inputs.extra }}
+        INPUT_CHECKSUM: ${{ inputs.checksum }}
+        INPUT_SIGN: ${{ inputs.sign }}
+        INPUT_DIRECTORY: ${{ inputs.directory }}
+      run: node "$GITHUB_ACTION_PATH/package-binary.mjs"
+
+    # One archive format across every platform, Windows included: the runner
+    # images carry `tar`, and a single format keeps the download name a
+    # consumer reconstructs single-valued (`pkg-fmt = "tgz"` for
+    # `cargo binstall`, one branch in an installer script).
+    - name: Create the archive and its checksum
+      shell: bash
+      env:
+        ARCHIVE: ${{ steps.stage.outputs.archive }}
+        CHECKSUM: ${{ steps.stage.outputs.checksum }}
+        DIRECTORY: ${{ steps.stage.outputs.directory }}
+        NAME: ${{ steps.stage.outputs.name }}
+      run: |
+        set -euo pipefail
+
+        # macOS ships `shasum`, Linux and the Git for Windows environment ship
+        # `sha256sum`; both write the record `sha256sum -c` reads back.
+        sha256() {
+          if command -v sha256sum > /dev/null 2>&1; then
+            sha256sum "$@"
+          else
+            shasum -a 256 "$@"
+          fi
+        }
+
+        tar -C "$DIRECTORY" -czf "$ARCHIVE" "$NAME"
+        tar -tzf "$ARCHIVE" > /dev/null
+
+        if [ -n "$CHECKSUM" ]; then
+          # Computed in the archive's directory, so the record names the asset
+          # and not a path that only exists on the runner.
+          (cd "$DIRECTORY" && sha256 "${NAME}.tar.gz" > "${NAME}.tar.gz.sha256")
+          cat "$CHECKSUM"
+        fi
+
+    - name: Install cosign
+      if: ${{ inputs.sign == 'true' }}
+      uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+    # Keyless: the certificate in the bundle carries the workflow's OIDC
+    # identity, so verification names the workflow that built the archive
+    # instead of a key someone has to hold.
+    - name: Sign the archive
+      if: ${{ inputs.sign == 'true' }}
+      shell: bash
+      env:
+        ARCHIVE: ${{ steps.stage.outputs.archive }}
+        BUNDLE: ${{ steps.stage.outputs.bundle }}
+      run: |
+        set -euo pipefail
+        cosign sign-blob --yes --bundle "$BUNDLE" "$ARCHIVE"
+
+    - name: Upload the assets to the release
+      if: ${{ inputs.release == 'true' }}
+      shell: bash
+      env:
+        ARCHIVE: ${{ steps.stage.outputs.archive }}
+        BUNDLE: ${{ steps.stage.outputs.bundle }}
+        CHECKSUM: ${{ steps.stage.outputs.checksum }}
+        GH_REPO: ${{ github.repository }}
+        GH_TOKEN: ${{ inputs.token }}
+        TAG: ${{ inputs.tag }}
+      run: |
+        set -euo pipefail
+
+        assets=("$ARCHIVE")
+        if [ -n "$CHECKSUM" ]; then
+          assets+=("$CHECKSUM")
+        fi
+        if [ -n "$BUNDLE" ]; then
+          assets+=("$BUNDLE")
+        fi
+
+        # `--clobber` replaces this job's own assets, so a re-run of a failed
+        # matrix leg overwrites a half-uploaded file instead of failing on it.
+        gh release upload "$TAG" "${assets[@]}" --clobber
