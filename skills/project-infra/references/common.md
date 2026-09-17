@@ -83,7 +83,8 @@ Pin down the agreements a contributor, a reader, or a release depends on:
   each released version have one source, and every other occurrence is derived
   from it rather than restated;
 - every file carrying a version is covered by a
-  [release updater](ci-and-releases.md#configure-release-please);
+  [release updater](ci-and-releases.md#configure-release-please), which the
+  [release-set check](../assets/common/check-release-set.mjs) proves;
 - the README and the other entry points still carry the sections and links they
   promise, and every decision record appears in its
   [index](documentation.md#record-decisions-in-one-indexed-set);
