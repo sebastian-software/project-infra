@@ -317,6 +317,7 @@ Exercise the installed artifact at the boundary the consumer uses.
 | npm package           | [Pack and install in a clean consumer](node.md#verify-the-development-and-consumer-paths): archive against `files`, every entry point, each export condition  |
 | Rust crate            | Package, then [test and install the packaged result](rust.md#share-the-local-and-ci-checks); verify the [API contract](rust.md#share-the-local-and-ci-checks) |
 | Native Node package   | Wrapper and sidecar versions, platform selection, a packed binding in a [clean consumer](node.md#verify-the-development-and-consumer-paths), a musl host load |
+| CLI on npm            | [Install the packed wrapper in a clean consumer](#distribute-a-cli-through-npm): platform resolution, the launch version check, and the binary's `--version`  |
 | Downloaded CLI        | Smoke-test the binary and verify `<name>-<version>-<target>.tar.gz` against its `.sha256`, `SHA256SUMS`, and `.sigstore.json` bundle                          |
 | Homebrew formula      | Validate the formula and install/test its referenced artifact                                                                                                 |
 | Git-installed package | Verify the Git consumer path and keep required built files committed and current                                                                              |
@@ -324,3 +325,78 @@ Exercise the installed artifact at the boundary the consumer uses.
 Use package validators where they cover the contract. Commit built output only
 when the distribution path requires it. Scale validation to the product rather
 than installing every package checker in every application.
+
+## Distribute a CLI through npm
+
+An npm wrapper lets a project install a Rust CLI with the package manager it
+already runs and pin the version in `package.json`, which a global install
+channel cannot do. Two models bring the binary to that consumer, and they
+differ in what the consumer's machine still has to do after the install.
+
+Platform packages publish the binary in one package per platform, each
+declaring its `os`, `cpu`, and on Linux `libc`, and the wrapper lists them in
+`optionalDependencies`. The package manager installs only the matching one, and
+the wrapper's `bin` is a launcher that resolves that package and executes the
+binary it carries. Nothing is fetched, unpacked, or written after installation,
+so an offline machine, a registry mirror, and an install with lifecycle scripts
+disabled all work, and the lockfile covers the binary itself. The costs are one
+published package per platform per release, each name needing a first publish
+before Trusted Publishing can take it over, and one Node process in front of
+every invocation. The
+[launcher excerpt](../assets/node/cli-launcher.mjs) carries the resolution, the
+version check, and the spawn.
+
+Downloading on first run publishes one package instead. The launcher resolves
+the target, downloads `<name>-<version>-<target>.tar.gz` and its `.sha256` from
+the release of its own version, verifies the checksum before anything is
+executed, and caches the binary per version and target, moving it into place
+with an atomic rename so a concurrent run cannot execute a partial file. The
+release becomes a runtime dependency of the installed package: the first run
+needs network and proxy access to the release host, and a machine that reaches
+only its registry mirror never gets a binary at all. The wrapper also owns
+download retries, proxy handling, and the cache: code that the other model does
+not have, running on the consumer's machine.
+
+Choose platform packages for a CLI that must install offline, behind a mirror,
+or into an image that disables lifecycle scripts. Choose the download model for
+a single small binary with a public release and a simple publishing job, where
+one package per release is the smaller thing to maintain.
+
+Both models hold the same invariants:
+
+- The wrapper's version is the crate's version, and every platform package is
+  pinned to exactly that version. Anything else advertises a CLI the release
+  never built. The
+  [version check excerpt](../assets/node/scripts/check-cli-version.mjs) compares
+  the manifests; run it in the check job and as the wrapper's `prepublishOnly`
+  script, which is the last point before the version is immutable.
+- Linux resolution separates glibc from musl. The diagnostic report's
+  `header.glibcVersionRuntime` exists only on a glibc runtime, so
+  `process.report.getReport()` decides it without spawning `ldd`. A musl
+  consumer sent to the gnu build fails in the dynamic loader instead, with a
+  message that names no package.
+- The launcher runs a binary of its own version and reports a mismatch as one:
+  the platform model compares the resolved package's version before spawning,
+  and the download model requests the release of its own version rather than
+  the latest one. A binary from another version is otherwise read as a bug in
+  the CLI.
+- CI installs the packed wrapper in an empty consumer and runs the real binary
+  once for every published platform, as the
+  [artifact checks](#verify-the-artifact-consumers-receive) require. For the
+  download model that smoke belongs after the release assets exist and before
+  `npm publish`, because it downloads what a consumer's machine will fetch.
+
+Name a platform package `<wrapper package>-<platform id>`, using the platform
+ids that the [`napi-matrix` action](#use-the-organizations-shared-actions)
+derives: `linux-x64-gnu`, `linux-arm64-gnu`, `linux-x64-musl`,
+`linux-arm64-musl`, `darwin-arm64`, `darwin-x64`, `win32-x64-msvc`, and
+`win32-arm64-msvc`. One vocabulary then covers a CLI's platform packages and a
+library's napi sidecars, so a repository that ships both derives every package
+name from the same matrix instead of writing the list down twice.
+
+Carry the version into the wrapper manifest, its lockfile, and every platform
+manifest from the release configuration, as the
+[rust-with-npm-wrapper.json excerpt](../assets/ci/release-please/rust-with-npm-wrapper.json)
+shows. Publish the platform packages before the wrapper, because its optional
+dependencies have to exist before it can install; that is the order the
+[`publish-npm` action](#use-the-organizations-shared-actions) takes them in.

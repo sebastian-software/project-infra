@@ -180,6 +180,11 @@ Naming is derived, never written down twice (decision D7 of the family audit):
   `<binary>` is the package name without its scope;
 - CI artifact — `native-<id>`.
 
+The same ids name the platform packages of a CLI published through an npm
+wrapper, so a repository that ships a binding and a CLI derives every package
+name from this one list; the CI reference's "Distribute a CLI through npm"
+section states that rule.
+
 ## `verify-musl-native`
 
 Builds one musl platform package in an Alpine container and loads its addon in
