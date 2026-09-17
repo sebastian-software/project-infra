@@ -1,0 +1,22 @@
+#!/bin/sh
+# .githooks/pre-push
+# Optional hook. Runs the same fast checks once for the whole repository before
+# the commits leave the machine. It is not the project gate; CI runs the
+# complete check.
+set -eu
+
+if [ -f Cargo.toml ]; then
+  cargo fmt --all --check
+  cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+fi
+
+if [ -f pnpm-lock.yaml ]; then
+  pnpm format:check
+  pnpm lint
+fi
+
+# Blocks the push when the committed README no longer matches its source. The
+# regenerated file stays in the worktree for review; the task never commits.
+if [ -f mise.toml ]; then
+  mise run readme:pre-push
+fi

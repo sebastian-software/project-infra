@@ -40,8 +40,9 @@ PY
 echo "==> Action pins in this repository's workflows"
 node .github/actions/check-action-pins/check-action-pins.mjs .github/workflows .github/actions
 
+# Git hook excerpts carry no suffix, so the hook directory is matched by path.
 echo "==> Shell configuration excerpts"
-for script in $(find skills -name '*.sh'); do
+for script in $(find skills -type f \( -name '*.sh' -o -path '*/githooks/*' \)); do
   sh -n "$script"
 done
 echo "Shell check passed."
