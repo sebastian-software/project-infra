@@ -77,8 +77,9 @@ removes that configuration together with the name, and nothing reports the loss.
   [generated README content](documentation.md#generate-shared-readme-content).
 - **The repository's own gate.** It loses a step, not its entry point.
 - **Repository scaffolding.** Issue and pull-request templates, code owners,
-  labels, and security and support texts have no replacement here yet. Leave
-  them in place.
+  labels, and security and support texts stay in place. Aligning them with the
+  [scaffolding set](documentation.md#scaffold-a-repository) is a separate
+  change, not part of the retirement.
 
 ## Verify
 

@@ -1,0 +1,13 @@
+# Applies to an editor before the project's formatter runs, so a contributor
+# without the toolchain installed still produces the bytes the gate expects.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Two trailing spaces are a Markdown hard line break, so they are content.
+[*.md]
+trim_trailing_whitespace = false

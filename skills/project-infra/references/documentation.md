@@ -22,6 +22,68 @@ interfaces and unavailable features clearly. Describe the supported path and
 its technical rationale; keep obsolete tools and implementation comparisons out
 of the instructions.
 
+## Scaffold a repository
+
+Every repository carries the same contributor surface: the files GitHub reads to
+route a report, and the files Git and an editor read before any project tooling
+runs. The set lives in one flat directory under
+[`assets/scaffolding/`](../assets/scaffolding/); the table gives the path each
+file takes in the repository.
+
+| Destination                                                                                              | Owns                                                                                                         |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| [`SECURITY.md`](../assets/scaffolding/SECURITY.md)                                                       | The private reporting routes, the response times maintainers commit to, and what counts as in scope          |
+| [`SUPPORT.md`](../assets/scaffolding/SUPPORT.md)                                                         | Which channel a usage question, a defect, and a vulnerability each belong in                                 |
+| [`CODE_OF_CONDUCT.md`](../assets/scaffolding/CODE_OF_CONDUCT.md)                                         | Expected behavior, and a reporting address that still works when the report concerns a maintainer            |
+| [`.github/CODEOWNERS`](../assets/scaffolding/CODEOWNERS)                                                 | The default reviewer for every path, with the last-match-wins rule stated where the next pattern gets added  |
+| [`.github/ISSUE_TEMPLATE/bug_report.yml`](../assets/scaffolding/ISSUE_TEMPLATE/bug_report.yml)           | The environment, reproduction, and expected-versus-actual fields that make a defect actionable               |
+| [`.github/ISSUE_TEMPLATE/feature_request.yml`](../assets/scaffolding/ISSUE_TEMPLATE/feature_request.yml) | The problem behind a request, asked before its proposed solution                                             |
+| [`.github/ISSUE_TEMPLATE/question.yml`](../assets/scaffolding/ISSUE_TEMPLATE/question.yml)               | A question carrying the version, the command, and the documentation page involved                            |
+| [`.github/ISSUE_TEMPLATE/performance.yml`](../assets/scaffolding/ISSUE_TEMPLATE/performance.yml)         | Optional: the fixture, same-host measurements, and limitations a performance claim needs                     |
+| [`.github/ISSUE_TEMPLATE/config.yml`](../assets/scaffolding/ISSUE_TEMPLATE/config.yml)                   | Closing the blank-issue route and offering both security reporting channels                                  |
+| [`.github/pull_request_template.md`](../assets/scaffolding/pull_request_template.md)                     | Summary, changes, validation, and the issue the change closes                                                |
+| [`.gitattributes`](../assets/scaffolding/.gitattributes)                                                 | Line-ending normalization, including the rule the [README check](#generate-shared-readme-content) depends on |
+| [`.editorconfig`](../assets/scaffolding/.editorconfig)                                                   | Encoding, line endings, and trailing whitespace for an editor that acts before the project's formatter       |
+| [`.github/FUNDING.yml`](../assets/scaffolding/FUNDING.yml)                                               | The sponsor button; delete the file where sponsorship does not apply                                         |
+
+Unlike the configuration excerpts, these files are not shapes to adapt. Copy
+each one unchanged except where the project itself has to appear in it:
+
+- `config.yml` needs the repository name substituted into both security URLs.
+- The **Validation** list in the pull-request template becomes the project's own
+  gate commands, so a reviewer can see which of them ran.
+- `SECURITY.md`'s **Scope** section names the artifacts the product ships where
+  the general wording is too vague to act on.
+
+Keeping the rest identical means a contributor who moves between projects reads
+one policy instead of reconstructing each variant, and a correction reaches every
+repository through the same file. When a project needs a different rule, change
+the shared file rather than the copy, or state the reason next to the file that
+differs.
+
+Verify the result in the repository's **New issue** view: each form renders, the
+blank-issue route is gone, both security links resolve, and each form applies its
+label.
+
+## Create the labels the issue forms apply
+
+A form that names a label the repository does not have applies nothing and
+reports no error, so create these labels with the repository rather than after
+the first mislabeled issue.
+
+| Label              | Applied by                                                                                                       |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `type:bug`         | `bug_report.yml`                                                                                                 |
+| `type:feature`     | `feature_request.yml`                                                                                            |
+| `type:question`    | `question.yml`                                                                                                   |
+| `type:performance` | `performance.yml`, where the repository uses it                                                                  |
+| `dependencies`     | The dependency updater rather than a form, under the [shared policy](ci-and-releases.md#share-dependency-policy) |
+
+The shared `type:` prefix keeps one triage filter working in every repository and
+leaves the unprefixed namespace free for a project's own topic labels; add those
+alongside. `dependencies` separates automated updates from work a person filed.
+Renaming a label above breaks the form that names it, without any warning.
+
 ## Generate shared README content
 
 Use [mdtheme](https://github.com/sebastian-software/mdtheme) for shared README
