@@ -49,6 +49,8 @@ app discovery, customization, and removal.
 | Explore open design questions, including hooks | [RFCs](docs/rfcs/README.md)                         |
 | Improve the skill or documentation             | [Contributing](CONTRIBUTING.md)                     |
 
+Run `./scripts/check.sh` before proposing a change.
+
 ## License
 
 Licensed under either the [Apache License 2.0](LICENSE-APACHE) or the
