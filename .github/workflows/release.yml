@@ -1,9 +1,10 @@
 name: Release
 
-# The skill reaches consumers through the Skills CLI reading this repository,
-# not through a package registry, so this workflow has no publishing job.
-# Release Please owns the version, the changelog, the tag, and the GitHub
-# Release; a consumer installs the default branch or pins one of those tags.
+# Consumers read this repository directly: the Skills CLI installs the skill and
+# other repositories pin the composite actions by SHA. Nothing goes to a
+# registry, so this workflow has no publishing job. Release Please owns the
+# version, the changelog, the tag, and the GitHub Release, and those tags are
+# what ADR-0009 has consumers pin.
 
 on:
   push:

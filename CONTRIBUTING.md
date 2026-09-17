@@ -138,26 +138,30 @@ The gate cannot tell whether an instruction is correct. Before committing, also:
 Write every commit and pull request title as a
 [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/). The
 repository squash merges, so the title becomes the commit on `main` that
-[Release Please](docs/adr/0009-release-the-skill-with-release-please-and-no-publishing-step.md)
+[Release Please](docs/adr/0009-release-with-release-please-and-no-publishing-step.md)
 reads. A CI check rejects a title it cannot parse; it runs outside
 `scripts/check.sh` because the title is not part of the working tree.
 
-The version describes the installed package, not the repository. Choose the type
-from the paths the change touches:
+The version describes what consumers take from this repository, not the
+repository itself. Choose the type from the paths the change touches:
 
-| Change                                                               | Type                                                   | Releases |
-| -------------------------------------------------------------------- | ------------------------------------------------------ | -------- |
-| Anything under `skills/project-infra/`, including the Skills CLI pin | `feat` for new or changed guidance, `fix` for a defect | yes      |
-| ADRs, RFCs, README, installation guide, this guide                   | `docs`                                                 | no       |
-| Workflows, `scripts/`, release configuration                         | `ci`                                                   | no       |
-| Housekeeping, restructuring, reverts                                 | `chore`, `refactor`, `revert`                          | no       |
+| Change                                                  | Type                          | Releases |
+| ------------------------------------------------------- | ----------------------------- | -------- |
+| `skills/project-infra/`, including the Skills CLI pin   | `feat` or `fix`               | yes      |
+| `.github/actions/`, which other repositories pin by SHA | `feat` or `fix`               | yes      |
+| ADRs, RFCs, README, installation guide, this guide      | `docs`                        | no       |
+| `.github/workflows/`, `scripts/`, release configuration | `ci`                          | no       |
+| Housekeeping, restructuring, reverts                    | `chore`, `refactor`, `revert` | no       |
+
+Use `feat` for new or changed behavior and guidance, and `fix` for a defect in
+either.
 
 Mark a change that consumers must act on with `!` or a `BREAKING CHANGE:`
 footer, and say in the body what a consuming project has to do. While the
 version stays below `1.0.0`, such a change raises the minor version rather than
 the major one. Nothing in the gate compares the type against the diff, so check
-that pairing in review: a skill change labeled `docs` withholds a release a
-consumer should see.
+that pairing in review: a skill or action change labeled `docs` withholds a
+release a consumer should see.
 
 Release Please opens a release pull request once releasable commits land on
 `main`. Review the version, `CHANGELOG.md`, and `version.txt` in that pull

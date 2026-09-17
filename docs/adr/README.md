@@ -19,7 +19,7 @@ here on, an accepted record is superseded rather than rewritten.
 | [0006](0006-dual-license-under-apache-2-0-and-mit.md)                  | Dual license under Apache 2.0 and MIT                  | accepted |
 | [0007](0007-consolidate-shared-infrastructure-into-this-repository.md) | Consolidate shared infrastructure into this repository | accepted |
 | [0008](0008-succeed-the-standards-repository.md)                       | Succeed the standards repository                       | accepted |
-| [0009](0009-release-the-skill-with-release-please-and-no-publishing-step.md) | Release the skill with Release Please and no publishing step | accepted |
+| [0009](0009-release-with-release-please-and-no-publishing-step.md)     | Release with Release Please and no publishing step     | accepted |
 
 See [the contribution guide](../../CONTRIBUTING.md) for the record lifecycle and
 [the RFCs](../rfcs/README.md) for open proposals.
