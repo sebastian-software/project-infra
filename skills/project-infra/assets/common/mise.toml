@@ -1,4 +1,35 @@
 # Shared CLI tools that the package manager does not provide, for example in a
-# Rust-only repository. Commit the lockfile that mise generates next to it.
-[tools]
-"npm:mdtheme" = "0.1.1"
+# Rust-only repository. `version_prefix` matches the release tag format.
+# `mise lock` records each platform's archive and checksum in mise.lock; commit
+# that file next to this one and install with `mise install --locked`.
+[tools."github:sebastian-software/mdtheme"]
+version = "0.4.0"
+version_prefix = "mdtheme-v"
+
+# A missing or unpinned tool must fail here rather than resolve to whatever
+# version the machine happens to provide.
+[settings]
+auto_install = false
+not_found_auto_install = false
+not_found_system_fallback = false
+
+# Tasks give every stack the same command names. `mise which` resolves the
+# pinned binary before running it, and MISE_OFFLINE keeps the task from
+# fetching a different one.
+[tasks."readme:check"]
+description = "Check the generated README against its sources"
+shell = "bash -c"
+env = { MISE_OFFLINE = "true" }
+run = 'binary=$(mise which mdtheme) && "$binary" --check'
+
+[tasks."readme:write"]
+description = "Regenerate the README from its sources"
+shell = "bash -c"
+env = { MISE_OFFLINE = "true" }
+run = 'binary=$(mise which mdtheme) && "$binary" --write'
+
+[tasks."readme:pre-push"]
+description = "Block a push whose generated README is stale or uncommitted"
+shell = "bash -c"
+env = { MISE_OFFLINE = "true" }
+run = 'binary=$(mise which mdtheme) && "$binary" pre-push'

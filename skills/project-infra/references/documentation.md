@@ -25,17 +25,41 @@ of the instructions.
 ## Generate shared README content
 
 Use [mdtheme](https://github.com/sebastian-software/mdtheme) for shared README
-branding. Keep authored content in `README.md.src`, the theme selection in
-`mdtheme.config.ts`, and the generated `README.md` committed. Select the shared
-theme revision explicitly and pin the CLI independently.
+branding. Keep the authored content in `README.md.src`, the theme selection in
+`mdtheme.yaml`, and the generated `README.md` committed, because readers and
+package registries see the rendered file. Select each shared theme by commit: a
+moving branch changes the output on a commit that did not touch the project, so
+the check fails without a project change.
 
-Offer `readme:write` and `readme:check` through the project tool setup, as in
-the [package scripts](../assets/node/package.json). Contributors edit the
-authored source and regenerate; the check detects drift. This separates project
-content from reusable presentation and avoids manual edits being lost.
+Pin the CLI in `mise.toml` and commit its lockfile, as described under
+[tool selection](common.md#keep-tool-selection-in-the-project), and expose the
+generator through mise tasks so a Rust, Node, or mixed repository uses the same
+commands:
 
-Keep rendering and branding policy with mdtheme and its theme. Reference their
-documentation instead of duplicating configuration schemas in project-infra.
+| Command                    | Purpose                                                           |
+| -------------------------- | ----------------------------------------------------------------- |
+| `mise run readme:write`    | Regenerate `README.md` after editing the source or moving a theme |
+| `mise run readme:check`    | The gate command; it reports drift without writing                |
+| `mise run readme:pre-push` | Optional local hook that blocks a push on a stale README          |
+
+Keep the task as the single implementation so a local run, a Git hook, and CI
+execute the same pinned binary. In CI, install the tool from the lockfile and
+run `mise run readme:check` in a job of its own, as in the
+[workflow excerpt](../assets/ci/check.yml); that keeps the language jobs free of
+a toolchain they do not otherwise need. A Node project can offer matching
+`package.json` scripts that call the same tasks, as in the
+[package scripts](../assets/node/package.json), so the two entry points cannot
+disagree.
+
+Give `/README.md` and `/README.md.src` a `text eol=lf` rule in `.gitattributes`.
+The check compares bytes, so without it a Windows checkout reports drift in
+files nobody edited.
+
+Separating the authored source from the generated file keeps project content
+independent of reusable presentation and stops manual README edits from being
+lost on the next run. Keep rendering and branding policy with mdtheme and its
+theme; reference their documentation instead of restating its configuration
+schema here.
 
 ## Keep agent integrations thin
 
