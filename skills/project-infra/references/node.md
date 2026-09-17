@@ -60,6 +60,12 @@ checks already covered; retain ESLint's required TypeScript checks while the
 organization's migration is incomplete. Adopting these standards does not require
 finishing that migration in the same change.
 
+These packages are released on their own schedule and are not part of this
+skill. Install the current version and extend it locally; project-specific
+overrides and additions are the expected shape, not an exception. Checking that
+a project is on a recent version is worth a moment during an infrastructure
+update, but chasing the newest release is not part of one.
+
 Use the recommended lint profile with scopes matching the actual runtime,
 framework, and tests. When both linters run, give overlapping checks a clear
 owner. Keep rule definitions in the shared configuration and local exceptions

@@ -13,15 +13,15 @@ Adoption should produce a small, reviewable change with a useful local workflow.
 
 ## Proposed ownership
 
-| Component             | Responsibility                                                                      |
-| --------------------- | ----------------------------------------------------------------------------------- |
-| project-infra         | Infrastructure defaults, instructions for applying them, and configuration excerpts |
-| Shared tool packages  | Their executable rules and compatibility requirements                               |
-| renovate-config       | Shared dependency-update policy                                                     |
-| repo-template         | Initial scaffolding based on the same current standards                             |
-| mdtheme and its theme | README rendering and presentation                                                   |
-| Consumer repository   | Product configuration, compatibility contracts, and local checks                    |
-| Agent app             | Execution context and invocation                                                    |
+| Component             | Responsibility                                                                                                                                |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| project-infra         | Infrastructure defaults and the instructions for applying them, configuration excerpts, shared composite actions, and shared task definitions |
+| Shared tool packages  | Their executable rules and compatibility requirements, on their own release cadence                                                           |
+| renovate-config       | Shared dependency-update policy                                                                                                               |
+| repo-template         | Initial scaffolding based on the same current standards                                                                                       |
+| mdtheme and its theme | README rendering and presentation                                                                                                             |
+| Consumer repository   | Product configuration, compatibility contracts, and local checks                                                                              |
+| Agent app             | Execution context and invocation                                                                                                              |
 
 A template supplies a starting point. Keeping an existing project current means
 reconciling its actual configuration with the current standards.
@@ -41,6 +41,10 @@ exposes ambiguity or extra work.
 1. Which project and update make the first useful trial?
 2. How should repo-template consume the shared guidance without duplicating it?
 3. How should dependency automation update the project-local installation?
+4. Which repository proves the mise task include before it becomes guidance, and
+   which tasks belong in the shared set?
+5. In which order do the composite actions move here, given that a consumer's
+   publish path must keep working throughout?
 
 ## Related proposals
 

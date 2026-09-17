@@ -50,6 +50,17 @@ for (const file of markdownFiles) {
   const source = readFileSync(file, "utf8");
   const where = relative(root, file);
 
+  // An edit that splices text next to a fence can leave a block open or widen
+  // its marker. Both still render as valid Markdown, so nothing else notices.
+  const fences = source.split("\n").filter((line) => /^`{3,}/.test(line));
+  if (fences.length % 2 !== 0) {
+    problems.push(`${where}: unbalanced code fence, ${fences.length} fence lines`);
+  }
+  const widened = fences.find((line) => /^`{4,}/.test(line));
+  if (widened) {
+    problems.push(`${where}: code fence wider than three backticks: ${widened.slice(0, 12)}`);
+  }
+
   for (const match of source.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
     const link = match[1];
     if (/^[a-z][a-z0-9+.-]*:/i.test(link) || link.startsWith("//")) continue;
