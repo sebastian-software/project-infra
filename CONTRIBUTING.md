@@ -181,10 +181,6 @@ workflows to run on the release pull request, because GitHub starts no workflow
 runs for events created with the built-in token, and without it the release
 pull request opens with no checks at all.
 
-After the first generated release pull request is merged, drop `bootstrap-sha`
-from [`release-please-config.json`](release-please-config.json). Release Please
-ignores it from then on, and removing it keeps the configuration honest.
-
 ## License
 
 This project is dual licensed under the [Apache License 2.0](LICENSE-APACHE) and

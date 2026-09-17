@@ -49,6 +49,7 @@ app discovery, customization, and removal.
 | Explore open design questions, including hooks | [RFCs](docs/rfcs/README.md)                         |
 | Improve the skill or documentation             | [Contributing](CONTRIBUTING.md)                     |
 | Reference a shared GitHub Action               | [Composite actions](.github/actions/README.md)      |
+| See what changed between versions              | [Changelog](CHANGELOG.md)                           |
 
 Run `./scripts/check.sh` before proposing a change.
 
