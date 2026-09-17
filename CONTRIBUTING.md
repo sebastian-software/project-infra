@@ -95,6 +95,9 @@ incident.
 ADR statuses are `proposed`, `accepted`, `rejected`, `deprecated`, and
 `superseded`. Accepted ADRs preserve the decision as made. Correct typos or broken
 links in place; use a successor ADR for a semantic change and link both records.
+The skill gives consuming projects the same format, vocabulary, and index rule
+under [record decisions in one indexed set](skills/project-infra/references/documentation.md#record-decisions-in-one-indexed-set),
+so change the two together.
 
 RFCs begin as `draft` and can evolve during discussion. When a proposal is
 resolved, record the decision in an ADR and remove the RFC, or mark it `resolved`
@@ -116,6 +119,8 @@ Node.js 22.20.0 or newer and Python 3.11 or newer, and it writes nothing:
 | `oxfmt --check`          | Formatting, and a parse of every Markdown, JSON, YAML, and TypeScript file                                             |
 | `scripts/check-docs.mjs` | Relative links and heading anchors, links that would leave the installed package, and the skill's required frontmatter |
 | `tomllib`                | The TOML configuration excerpts, which oxfmt does not parse                                                            |
+| The shared action checks | This repository's own workflows, held to the pin and hygiene rules it publishes                                        |
+| `node --test`            | The workflow-hygiene rules, against the fixture workflows beside the action                                            |
 | `sh -n`                  | The shell configuration excerpts                                                                                       |
 
 Run `npx oxfmt@0.68.0 .` to apply formatting. Keep the gate fast and read-only.

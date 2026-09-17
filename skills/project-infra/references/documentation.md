@@ -140,12 +140,68 @@ other setup steps; their shape is owned by the
 long-running agent updates as separate, explicit tasks so ordinary development
 does not depend on an agent session.
 
-## Keep decisions and task guides easy to find
+## Record decisions in one indexed set
 
-For new projects, use indexed Markdown ADRs under `docs/adr/`. Follow an existing
-project's declared decision lifecycle when updating its records.
+Give each durable decision one record under `docs/adr/`, named `NNNN-slug.md`
+with a four-digit number, and open every record the same way:
+
+```md
+# ADR-0007: Resolve shared CLI tools through a committed lockfile
+
+- Status: accepted
+- Date: 2026-09-17
+```
+
+A status is `proposed`, `accepted`, `rejected`, `deprecated`, or `superseded`;
+add `- Updated: YYYY-MM-DD` when an accepted record is revised. The number, not
+the slug, identifies a record in its filename, its heading, and every inbound
+link, so a title can be corrected without breaking references. A number is never
+reused: a reader who follows an older link to a reissued number would find a
+decision that was never made under it.
+
+Keep one index at `docs/adr/README.md` that lists every record with its status.
+It is what the README, the contributor guide, and `AGENTS.md` link to, and the
+only place a reader sees which decisions exist and which still apply; a
+directory listing sorts filenames and shows no status, and a record the index
+omits is one nobody reads before contradicting it. State the project's record
+lifecycle in that index as well, because a record's own header does not show
+whether the set is kept living or superseded.
+
+The heading, the number, and the status sit in fixed positions, so the set is
+machine-checkable. The
+[index check](../assets/common/check-decisions-index.mjs) reports a record
+missing from the index, an index entry naming a file that does not exist, a
+heading whose number contradicts its filename, and a status outside the
+vocabulary. Run it from the project's gate; index drift is otherwise invisible
+until a reader follows an entry that leads nowhere.
+
+Edit a record in place for a clarification that leaves the decision intact, such
+as a broken link, a renamed command, or a sharper explanation, and bump
+`Updated`. Give a change to what was decided its own successor record: set the
+previous record's status to `superseded`, link it forward, and link back from
+the successor. Rewriting an accepted record removes the constraint that later
+work was built on and leaves every link citing it describing a decision nobody
+took.
+
+An existing project keeps the lifecycle it has declared, including a living set
+updated in place with Git as its chronology, and adds the index if it has none.
+Apply this convention to its new records instead of renumbering or reformatting
+the records it already has.
+
+Two companions are optional. A long-form proposal with open questions belongs in
+`docs/rfcs/`, numbered the same way, and resolves into a record under
+`docs/adr/`; completed milestones and historical release notes belong in
+`docs/archive/`. Both keep material that is not a current decision out of the
+decision set, so its index answers one question.
+
+## Choose plain Markdown or a documentation site
 
 Use plain Markdown while it serves the reader. When a product needs a
 searchable documentation website, use [Ardo](https://github.com/sebastian-software/ardo).
 Add the site for a reader need, not merely because several contributor documents
 exist.
+
+When that site is the reader's entry point, the decision records can live on its
+ADR route in the site's own file format. Keep the filename, the heading, the
+status bullets, and the single index page, and point the index check at that
+index, so the set stays verifiable wherever it is published.

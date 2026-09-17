@@ -35,10 +35,24 @@ if failed:
 print(f"TOML check passed: {len(files)} files.")
 PY
 
-# The shared action checks that every `uses:` names a full commit SHA. Running
-# it here holds this repository to the rule it publishes.
+# The shared actions check that every `uses:` names a full commit SHA and that
+# every workflow carries a timeout, an explicit token scope, and cancellation of
+# superseded runs. Running them here holds this repository to the rules it
+# publishes.
 echo "==> Action pins in this repository's workflows"
 node .github/actions/check-action-pins/check-action-pins.mjs .github/workflows .github/actions
+
+# The gate rule stays off: this repository runs its checks in the single `check`
+# job, which is itself the name branch protection requires, so there is no
+# aggregate job to find.
+echo "==> Workflow hygiene in this repository's workflows"
+node .github/actions/check-workflow-hygiene/check-workflow-hygiene.mjs .github/workflows
+
+# The hygiene rules are code, so they carry fixtures. Node runs them; nothing is
+# installed.
+echo "==> Workflow hygiene action tests"
+node --test --test-reporter=dot ".github/actions/check-workflow-hygiene/test/*.test.mjs"
+echo "Workflow hygiene tests passed."
 
 # Git hook excerpts carry no suffix, so the hook directory is matched by path.
 echo "==> Shell configuration excerpts"

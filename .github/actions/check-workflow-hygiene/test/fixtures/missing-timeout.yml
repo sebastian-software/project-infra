@@ -1,0 +1,24 @@
+# The second job is unbounded; the step-level timeout does not bound the job.
+name: Missing timeout
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: missing-timeout-${{ github.ref }}
+
+jobs:
+  bounded:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: echo bounded
+
+  unbounded:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo unbounded
+        timeout-minutes: 5

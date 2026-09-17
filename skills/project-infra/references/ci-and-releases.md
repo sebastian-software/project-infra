@@ -19,20 +19,23 @@ git ls-remote https://github.com/<owner>/<repo> 'refs/tags/<tag>^{}'
 
 Cancel superseded pull-request runs. Serialize publication when concurrent runs
 could race, and let an active release finish. Use platform matrices for the
-platforms the product supports.
+platforms the product supports. The shared `check-workflow-hygiene` action
+verifies the job timeouts, the explicit permission block, and that
+cancellation, so an omission fails the workflow's own run.
 
 ## Use the organization's shared actions
 
-Four composite actions carry publishing and platform behavior that repositories
-would otherwise reimplement. Reference them by path and commit SHA; do not copy
-them into a repository.
+Five composite actions carry publishing, platform, and workflow-checking
+behavior that repositories would otherwise reimplement. Reference them by path
+and commit SHA; do not copy them into a repository.
 
-| Action              | Use it for                                                                                                                               |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `publish-crates`    | Publishing a workspace's crates in dependency order, with an already-published check and index-propagation waits that make a re-run safe |
-| `publish-npm`       | Publishing packages in order with provenance, deriving the dist-tag from the version so a candidate never lands on `latest`              |
-| `napi-matrix`       | The organization's napi platform list and the derived sidecar, artifact, and binary names                                                |
-| `check-action-pins` | Failing a workflow whose `uses:` entries are not full commit SHAs                                                                        |
+| Action                   | Use it for                                                                                                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `publish-crates`         | Publishing a workspace's crates in dependency order, with an already-published check and index-propagation waits that make a re-run safe                                              |
+| `publish-npm`            | Publishing packages in order with provenance, deriving the dist-tag from the version so a candidate never lands on `latest`                                                           |
+| `napi-matrix`            | The organization's napi platform list and the derived sidecar, artifact, and binary names                                                                                             |
+| `check-action-pins`      | Failing a workflow whose `uses:` entries are not full commit SHAs                                                                                                                     |
+| `check-workflow-hygiene` | Failing a workflow whose jobs carry no timeout, whose token scope stays implicit, that leaves superseded pull-request runs going, or whose aggregate gate job is missing or skippable |
 
 They live in
 [sebastian-software/project-infra](https://github.com/sebastian-software/project-infra/tree/main/.github/actions),
@@ -57,7 +60,8 @@ examines each required result. Handle skipped jobs explicitly so omitted work
 cannot accidentally produce a passing gate.
 
 The [workflow excerpt](../assets/ci/check.yml) shows pinned actions, read-only
-permissions, cancellation of superseded runs, and such an aggregate gate.
+permissions, cancellation of superseded runs, both workflow checkers in one job,
+and such an aggregate gate.
 
 ## Share dependency policy
 

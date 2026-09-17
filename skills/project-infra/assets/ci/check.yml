@@ -52,10 +52,23 @@ jobs:
           install_args: --locked
       - run: mise run readme:check
 
+  # Holds the repository to the shared workflow rules: every `uses:` a full
+  # commit SHA, every job bounded by a timeout, the token scope explicit,
+  # superseded pull-request runs cancelled, and the gate job below in place.
+  workflows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      - uses: sebastian-software/project-infra/.github/actions/check-action-pins@<full-commit-sha> # vX.Y.Z
+      - uses: sebastian-software/project-infra/.github/actions/check-workflow-hygiene@<full-commit-sha> # vX.Y.Z
+        with:
+          gate-job: gate
+
   # Stable name for branch protection. Runs after failures and treats a
   # skipped or cancelled job as a failure.
   gate:
-    needs: [node, rust, readme]
+    needs: [node, rust, readme, workflows]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -64,3 +77,4 @@ jobs:
           test "${{ needs.node.result }}" = "success"
           test "${{ needs.rust.result }}" = "success"
           test "${{ needs.readme.result }}" = "success"
+          test "${{ needs.workflows.result }}" = "success"
