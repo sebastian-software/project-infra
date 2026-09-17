@@ -1,5 +1,6 @@
 ---
 name: project-infra
+license: MIT OR Apache-2.0
 description: Apply Sebastian Software infrastructure conventions to a project's tooling, CI, releases, and contributor documentation. Use for infrastructure setup, standards reviews, or requests to bring a repository up to date; ordinary feature work does not need a repository-wide update.
 ---
 

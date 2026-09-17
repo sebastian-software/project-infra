@@ -48,3 +48,11 @@ app discovery, customization, and removal.
 | Understand architectural choices               | [ADRs](docs/adr/README.md)                          |
 | Explore open design questions, including hooks | [RFCs](docs/rfcs/README.md)                         |
 | Improve the skill or documentation             | [Contributing](CONTRIBUTING.md)                     |
+
+Run `./scripts/check.sh` before proposing a change.
+
+## License
+
+Licensed under either the [Apache License 2.0](LICENSE-APACHE) or the
+[MIT license](LICENSE-MIT), at your option. The installed skill carries the same
+`MIT OR Apache-2.0` choice in its frontmatter.

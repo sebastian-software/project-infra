@@ -3,6 +3,7 @@
 This repository contains an Agent Skill, its standards, and design records.
 Read the [ADR index](docs/adr/README.md) for constraints and the
 [RFC index](docs/rfcs/README.md) for unresolved implementation questions.
+Contributions are covered by the [dual license](#license) described below.
 
 ## Improve a standard
 
@@ -91,18 +92,43 @@ resolved, record the decision in an ADR and remove the RFC, or mark it `resolved
 while other records still link to it. A draft RFC is not authorization to
 implement it, run automation, or migrate other repositories.
 
+## Run the checks
+
+`scripts/check.sh` is the complete gate. CI runs the same script, so a failure
+reproduces locally without reading the workflow. It needs Node.js 22.20.0 or
+newer and Python 3.11 or newer, and it writes nothing:
+
+```sh
+./scripts/check.sh
+```
+
+| Step                     | Covers                                                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `oxfmt --check`          | Formatting, and a parse of every Markdown, JSON, YAML, and TypeScript file                                             |
+| `scripts/check-docs.mjs` | Relative links and heading anchors, links that would leave the installed package, and the skill's required frontmatter |
+| `tomllib`                | The TOML configuration excerpts, which oxfmt does not parse                                                            |
+| `sh -n`                  | The shell configuration excerpts                                                                                       |
+
+Run `npx oxfmt@0.68.0 .` to apply formatting. Keep the gate fast and read-only.
+Add a check when a concrete defect justifies maintaining it; the skill needs no
+build, and an agent benchmark suite is explicitly out of scope.
+
 ## Review documentation changes
 
-Before committing:
+The gate cannot tell whether an instruction is correct. Before committing, also:
 
 1. Check that the text follows accepted decisions and keeps open choices open.
 2. Read the changed document from its intended entry point, without relying on
-   the founding conversation.
-3. Check relative links, headings, examples, dates, and index entries.
+   the discussion that produced it.
+3. Check examples, dates, and index entries.
 4. Run `git diff --check` after staging new files or changing tracked files.
 5. State which checks ran and identify examples that have not been executed.
 
-The skill is distributed as source files and needs no build. Use available
-formatting and validation tools; add repository tooling only when a concrete
-need justifies its maintenance cost. Record meaningful checks in the PR instead
-of maintaining an agent benchmark suite.
+## License
+
+This project is dual licensed under the [Apache License 2.0](LICENSE-APACHE) and
+the [MIT license](LICENSE-MIT). A user may choose either.
+
+Unless you state otherwise, any contribution you intentionally submit for
+inclusion in this project is licensed under those same terms, with no additional
+conditions.
