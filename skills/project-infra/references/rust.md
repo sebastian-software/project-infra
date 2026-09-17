@@ -101,6 +101,34 @@ Keep extended checks such as fuzzing and benchmarks in named gates with their
 prerequisites documented. Their cost and external requirements should not make
 the ordinary development loop unreliable.
 
+Put cargo-fuzz targets in a `fuzz/` directory that forms its own workspace,
+excluded from the root workspace, and commit a seed corpus for each target. The
+harnesses need a nightly toolchain for sanitizer instrumentation and depend on
+crates no release should carry, and the exclusion keeps those requirements out
+of the workspace-wide build, lint, and MSRV commands. The committed seeds start every
+run from reviewed coverage instead of an empty corpus, and they give a minimized
+crash input somewhere to stay as a regression fixture. That second workspace
+carries its own `Cargo.lock`, which no release strategy rewrites: list it among
+the [release configuration](ci-and-releases.md#configure-release-please)'s extra
+files, so a release commit does not leave the fuzz workspace unbuildable under
+`--locked`.
+
+Give the scheduled lane a long budget, and a pull-request lane, where the
+project wants one, a short one. A fuzzer's yield grows with the time it runs, while a check that
+gates a merge has to finish in a predictable few minutes, so the short lane
+rules out only shallow regressions and the schedule does the searching. Bound
+every run by total time, per-input timeout, and memory, and upload the crash
+input on failure; otherwise the reproducer exists only in the run log and cannot
+be replayed or minimized. The [fuzz workflow excerpt](../assets/ci/fuzz.yml)
+shows the target matrix, the pinned nightly, and those bounds.
+
+Where a project cannot carry a nightly toolchain, a deterministic mutation test
+over its own fixtures covers part of the same ground on stable: derive malformed
+variants of every committed example, push each through the public entry point
+under a wall-clock budget, and assert only that it returns instead of panicking
+or hanging. Its input set is fixed, so a failure reproduces from the ordinary
+test command rather than from an uploaded artifact.
+
 ## Configure releases for their consumers
 
 Use Cargo's release defaults until measured size or performance needs justify
