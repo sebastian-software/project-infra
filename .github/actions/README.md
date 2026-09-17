@@ -70,24 +70,72 @@ yanked.
 
 Publishes one or more packages with provenance, in the given order.
 
-| Input               | Default  | Meaning                                                       |
-| ------------------- | -------- | ------------------------------------------------------------- |
-| `packages`          | `.`      | Ordered package directories, sidecars before the main package |
-| `dist-tag`          | `""`     | Empty derives it from the version                             |
-| `access`            | `public` | npm access level for a first publish                          |
-| `provenance`        | `true`   | Attach a provenance attestation                               |
-| `token`             | `""`     | Fallback npm token; empty means Trusted Publishing            |
-| `working-directory` | `.`      | Where the npm commands run                                    |
+| Input                     | Default  | Meaning                                                               |
+| ------------------------- | -------- | --------------------------------------------------------------------- |
+| `packages`                | `.`      | Ordered package directories or packed tarballs, sidecars first        |
+| `dist-tag`                | `""`     | Empty derives it from the version                                     |
+| `access`                  | `public` | npm access level for a first publish                                  |
+| `provenance`              | `true`   | Attach a provenance attestation                                       |
+| `token`                   | `""`     | Fallback npm token; empty means Trusted Publishing                    |
+| `preflight-first-publish` | `true`   | Fail before the loop on a package name that was never published       |
+| `verify`                  | `true`   | Poll the registry after the loop until every version resolves         |
+| `verify-timeout`          | `120`    | Seconds to keep polling for a version, up to 1800                     |
+| `dry-run`                 | `false`  | Rehearse the release with `npm publish --dry-run` and publish nothing |
+| `working-directory`       | `.`      | Where the npm commands run                                            |
 
 Output `dist-tag` carries what was used.
 
 The dist-tag is derived from the version of the **last** package in the list —
 the main package: `1.2.3` publishes to `latest`, `1.2.3-rc.1` to `rc`,
 `1.2.3-next.4` to `next`, and a numeric prerelease (`1.2.3-1`) to `next`. A
-release candidate therefore never lands on `latest` by omission.
+release candidate therefore never lands on `latest` by omission, and an explicit
+`dist-tag: latest` for a prerelease version is refused, because that tag is what
+an installer takes by default.
 
-The job needs `permissions: id-token: write` for provenance and for Trusted
-Publishing, and npm 11.5.1 or newer — `npm install --global npm@latest` after
+Four properties keep a release from arriving in part, and make the re-run after
+one safe:
+
+- Every package name is looked up before anything is published, and a name with
+  no published version fails the job. Trusted Publishing mints a token only for
+  a package that already exists, so a newly added sidecar would otherwise fail
+  on its own upload, after its siblings are on the registry. Publish such a
+  package once with a token, register its trusted publisher, and the preflight
+  passes from then on. It is skipped when `token` is set, because a token can
+  create a package name, and a dry run reports it as a warning instead of a
+  failure, so a new package can still be rehearsed.
+- A package whose exact version the registry already serves is skipped, so the
+  re-run after a partial release publishes what is missing instead of failing on
+  a version that can only be deprecated, never replaced.
+- A registry read that is neither 200 nor 404 — another status, or a transport
+  failure that outlives three attempts — fails the job instead of counting as
+  "not published yet". That is the rule `publish-crates` follows for the sparse
+  index, and guessing there is what turns a re-run into an attempt to overwrite
+  an existing version.
+- `verify` then polls every listed package until the registry serves it, 15
+  seconds apart and for at most `verify-timeout` seconds. npm acknowledges a
+  publish before every read replica carries it, and without this a release that
+  arrived in part leaves a green job behind. The failure names the missing
+  versions and publishes nothing further: what did go out stays, and the re-run
+  skips it.
+
+npm resolves a publish argument as a registry spec before it considers a path:
+`tool` names the package `tool` on the registry, and `npm/darwin-arm64` is the
+GitHub shorthand `owner/repo`. Every entry that is not already `.`, `./…`, `../…`
+or absolute is therefore prefixed with `./`, which is the one shape that names
+the checkout. A `.tgz` entry publishes a packed archive — what a pnpm workspace
+releases, because packing resolves a `workspace:*` sidecar reference to a
+version — and its name and version are read out of the archive, so the dist-tag,
+the skip and the verification cover a packed release too.
+
+`dry-run: true` rehearses the whole path: `npm publish --dry-run` per package,
+the preflight in warning mode, and no verification, since nothing was published.
+A `workflow_dispatch` whose `dry-run` input defaults to `true` is a release
+rehearsal that cannot publish by accident.
+
+The registry reads go to `https://registry.npmjs.org`, or to
+`npm_config_registry` when the job sets it. The job needs
+`permissions: id-token: write` for provenance and for Trusted Publishing, and
+npm 11.5.1 or newer — `npm install --global npm@latest` after
 `actions/setup-node`. Publishing runs through `npm publish` even in pnpm
 repositories, because pnpm does not implement npm's Trusted Publishing exchange.
 

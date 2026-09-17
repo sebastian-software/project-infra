@@ -128,6 +128,11 @@ Use npm Trusted Publishing with OIDC where supported, and request provenance
 for public packages. Document required publisher registration, credentials, and
 check settings in a maintainer guide. Explain recovery from partial publication;
 a failed post-publication check must not try to overwrite an immutable version.
+Make that recovery a re-run of the same workflow: publishing skips a version the
+registry already serves, so the second run ships only what is missing. Verify
+the release against the registry afterwards — `publish-npm` does it through its
+`verify` input — because npm acknowledges a publish before every replica serves
+it, and a release that arrived in part otherwise leaves a green job behind.
 
 ### Configure Release Please
 
