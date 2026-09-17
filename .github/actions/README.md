@@ -58,6 +58,12 @@ Four properties make a re-run safe:
 - After each publish the action waits for the version to appear in the index
   before starting the next crate, so the dependent crate resolves.
 
+Run the [package verification script](../../skills/project-infra/assets/rust/scripts/verify-packages.sh)
+in the check workflow before a release reaches this action. It tests and
+installs the packaged archives, so a file missing from `include` fails a pull
+request instead of a version that is already on crates.io and can only be
+yanked.
+
 ## `publish-npm`
 
 Publishes one or more packages with provenance, in the given order.

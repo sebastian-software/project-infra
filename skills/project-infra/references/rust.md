@@ -97,6 +97,19 @@ which a stable toolchain does not expose, so pin the nightly release and the
 tool version together wherever the project installs them; an unpinned pair
 fails the check on an unrelated toolchain update.
 
+Verify packaging on the packaged result, not on the workspace that produced it.
+The [package verification script](../assets/rust/scripts/verify-packages.sh)
+archives the published crates in publish order, runs each archive's own tests
+with the already-packaged siblings patched in place of their registry versions,
+and installs a named binary crate from its archive to check that the binary
+starts. The workspace lends a crate its path dependencies, a shared lockfile,
+and features another member enables; the archive carries none of that, so a file
+left outside `include` or a feature the crate never declared itself fails here
+instead of in the first project that depends on the release. A crate that sits
+at the repository root offers Cargo everything around it unless `include` names
+what ships. Assert that allow-list in a test, so neither a new directory beside
+the crate nor a dropped file changes the archive unnoticed.
+
 Keep extended checks such as fuzzing and benchmarks in named gates with their
 prerequisites documented. Their cost and external requirements should not make
 the ordinary development loop unreliable.
