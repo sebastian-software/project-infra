@@ -73,9 +73,21 @@ the preset or add a narrow consumer rule when a required relationship is missing
 ## Automate versioned releases
 
 Use Conventional Commits in the merge history and Release Please for version and
-changelog updates. Validate squash PR titles when they become the release commit.
-This connects the reviewed change to its release without maintaining version
-bumps by hand.
+changelog updates. This connects the reviewed change to its release without
+maintaining version bumps by hand.
+
+Validate the pull request title wherever a squash merge turns it into the
+release commit: a title that does not parse as a Conventional Commit produces
+no version bump and no changelog entry, and nothing else reports the loss. Take
+the accepted types from the release configuration — every type its
+`changelog-sections` names, visible and hidden, plus `revert` — because a type
+the configuration does not name is parsed and then dropped without a changelog
+line, while the generic default list of a title-checking action rejects a type
+the project added and accepts types it never renders. A repository that
+rebase-merges puts every commit subject on the release branch, so it validates
+each non-merge subject against the same list, not only the title. The
+[PR title excerpt](../assets/ci/pr-title.yml) shows that check and its type
+list.
 
 Keep version ownership in the release configuration and the native manifests it
 updates, including intentional lockstep relationships. Build from the intended
