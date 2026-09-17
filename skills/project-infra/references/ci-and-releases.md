@@ -10,9 +10,42 @@ read access by default. Give publishing jobs the write permissions their
 operations need. These choices make dependency changes reviewable and keep
 failed or stalled jobs from consuming unbounded time.
 
+Resolve a pinned SHA from the release tag rather than from a branch, so the pin
+names a reviewed state:
+
+```sh
+git ls-remote https://github.com/<owner>/<repo> 'refs/tags/<tag>^{}'
+```
+
 Cancel superseded pull-request runs. Serialize publication when concurrent runs
 could race, and let an active release finish. Use platform matrices for the
 platforms the product supports.
+
+## Use the organization's shared actions
+
+Four composite actions carry publishing and platform behavior that repositories
+would otherwise reimplement. Reference them by path and commit SHA; do not copy
+them into a repository.
+
+| Action              | Use it for                                                                                                                               |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `publish-crates`    | Publishing a workspace's crates in dependency order, with an already-published check and index-propagation waits that make a re-run safe |
+| `publish-npm`       | Publishing packages in order with provenance, deriving the dist-tag from the version so a candidate never lands on `latest`              |
+| `napi-matrix`       | The organization's napi platform list and the derived sidecar, artifact, and binary names                                                |
+| `check-action-pins` | Failing a workflow whose `uses:` entries are not full commit SHAs                                                                        |
+
+They live in
+[sebastian-software/standards](https://github.com/sebastian-software/standards/tree/main/.github/actions),
+whose own README documents each input:
+
+```yaml
+- uses: sebastian-software/standards/.github/actions/publish-crates@<sha> # v0.13.0
+```
+
+Both publish actions authenticate through Trusted Publishing and need
+`permissions: id-token: write`. A first-ever publish cannot use it, because the
+package does not exist yet; pass a token input until it is enabled, then remove
+it. Prefer improving a shared action over adding a repository-local copy.
 
 Preserve the required check names configured in branch protection. When splitting
 checks into jobs, provide a stable aggregate that runs after failures and
