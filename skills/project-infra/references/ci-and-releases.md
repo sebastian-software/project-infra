@@ -24,6 +24,20 @@ platforms the product supports. The shared `check-workflow-hygiene` action
 verifies the job timeouts, the explicit permission block, and that
 cancellation, so an omission fails the workflow's own run.
 
+A gate that measures a number reports it before enforcing it. A coverage job
+writes the measured percentage and the floor to the run summary and uploads its
+report as an artifact, and fails on the floor only afterwards, because the run
+that failed is the one whose numbers someone has to act on; a gate that exits
+first leaves that run with a red mark and nothing to read. Keep the floor in a
+committed file the gate reads, so raising it is a reviewed diff and every
+restatement stays
+[derived from that one source](common.md#test-what-two-places-must-agree-on).
+The repository's own CI enforces it: an external coverage service adds an
+account, a token, and a second home for the number without ever failing a run,
+so it is not part of the gate. The
+[coverage script](../assets/rust/scripts/coverage.sh) and the `coverage` job in
+the [workflow excerpt](../assets/ci/check.yml) carry that order.
+
 ## Use the organization's shared actions
 
 Nine composite actions carry publishing, platform, release-asset, reporting,

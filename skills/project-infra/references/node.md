@@ -113,6 +113,11 @@ modules the compiler cannot resolve on its own.
 
 Use Vite for application builds, tsdown for distributable package bundles, and
 Vitest for tests. Configure only the outputs and environments the product needs.
+Where the project gates coverage, have `vitest.config.ts` read
+`coverage.thresholds.lines` from the `node` entry of the committed
+`coverage-floor` file that the
+[coverage gate](../assets/rust/scripts/coverage.sh) defines, so the floor has
+one source in the repository instead of a literal in the config.
 The [tsdown excerpt](../assets/node/tsdown.config.ts) configures an ESM package
 bundle with declarations.
 
