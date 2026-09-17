@@ -93,6 +93,39 @@ jobs:
       - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
       - run: cargo test --workspace --all-features --locked
 
+  # Only for a repository that publishes a coverage number. The floor lives in
+  # the committed coverage-floor file the script reads, and the measured number
+  # reaches the run summary and the artifact list before the floor is enforced.
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      # llvm-profdata and llvm-cov ship in this component. rust-toolchain.toml
+      # leaves it out because only this job instruments a build.
+      - run: rustup component add llvm-tools-preview
+      # mise.toml pins cargo-llvm-cov, so this job and a local run measure with
+      # the same binary.
+      - uses: jdx/mise-action@<full-commit-sha> # vX.Y.Z
+        with:
+          version: <mise-version>
+          install_args: --locked
+      # Writes target/lcov.info and the summary, then exits non-zero for a
+      # floor it missed.
+      - run: scripts/coverage.sh
+      - uses: actions/upload-artifact@<full-commit-sha> # vX.Y.Z
+        # The run that failed the floor is the one whose report someone reads,
+        # so the upload does not depend on the step above succeeding.
+        if: always()
+        with:
+          name: coverage
+          path: target/lcov.info
+          # A run that failed before measuring has no report to keep, which the
+          # upload notes instead of raising a second failure.
+          if-no-files-found: warn
+          # Long enough to compare a pull request with the run it came from.
+          retention-days: 14
+
   # Only for mutually exclusive or system-dependent features: `--all-features`
   # builds their union and never builds the combinations a consumer selects.
   # One line per documented profile.

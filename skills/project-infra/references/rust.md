@@ -71,6 +71,7 @@ property that broke instead of arriving as one long log:
 | `platforms` | The test suite on every operating system the product supports                | The product supports more than one         |
 | `rustdoc`   | The documentation builds under the flags docs.rs uses                        | The repository publishes a library         |
 | `features`  | The feature combinations `--all-features` never builds                       | Features are exclusive or system-dependent |
+| `coverage`  | The measured line coverage against the floor the repository commits          | The repository publishes a coverage number |
 
 Every job the project keeps also belongs in the aggregate gate's `needs` list
 and gets a result test of its own. A job left out of both reports to nobody, and
@@ -120,6 +121,25 @@ and a binary that only compiles has not been shown to start. Benchmarks compile
 already, since the gate script lints `--all-targets`; a benchmark outside that
 command, in a separate workspace or behind a feature, needs its own
 `cargo bench --no-run --locked` so it cannot rot unnoticed.
+
+Where the project publishes a coverage number, measure it in a job of its own
+and let that job enforce it. The
+[coverage script](../assets/rust/scripts/coverage.sh) runs the instrumented
+suite once, writes `target/lcov.info`, derives the workspace percentage and
+every per-crate percentage from that one report, and prints each of them
+against its floor before it exits non-zero for a floor that was missed; the
+workflow uploads that report from the same job, which is the
+[order a coverage gate runs in](ci-and-releases.md#keep-ci-reproducible-and-bounded).
+The floors live in a committed `coverage-floor` file, one
+`<scope> = <percent>` entry per line: `rust` for the whole report, and a key
+naming a crate's directory wherever one member has to hold a higher bar than
+the workspace around it. A scope that matches no file in the report fails
+rather than guarding nothing, and generated sources and fixture members leave
+the report through the script's ignore regex, which filters the report where
+`--exclude <crate>` would drop a member from the instrumented run itself. The
+job adds the `llvm-tools-preview` component, which carries the `llvm-profdata`
+and `llvm-cov` binaries the instrumentation needs, and takes cargo-llvm-cov
+from the pinned tool set.
 
 Use `cargo deny check` for dependency policy, starting from the
 [deny.toml excerpt](../assets/rust/deny.toml): the permissive license allow-list,
