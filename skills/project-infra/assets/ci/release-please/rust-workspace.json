@@ -28,6 +28,11 @@
           "jsonpath": "$.package[?(@.name.value==\"example-cli\")].version"
         },
         {
+          "type": "toml",
+          "path": "fuzz/Cargo.lock",
+          "jsonpath": "$.package[?(@.name.value==\"example-core\")].version"
+        },
+        {
           "type": "generic",
           "path": "README.md"
         }

@@ -1,0 +1,94 @@
+# .github/workflows/fuzz.yml
+# A separate workflow for a project with cargo-fuzz targets in an excluded
+# `fuzz/` workspace: the schedule carries the search, and the ordinary check
+# workflow stays free of a nightly toolchain and an open-ended runtime.
+# Replace every <full-commit-sha> with the commit of the release named in the
+# comment and keep that comment current.
+name: Fuzz
+
+on:
+  schedule:
+    # Weekly, off-hours, at an odd minute: scheduled runs cluster on the hour
+    # and are dropped when the runner queue is saturated.
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      max_total_time:
+        description: Per-target budget in seconds
+        required: false
+        default: "900"
+  # Opt-in short lane. A pull request can rule out the shallow regressions,
+  # but a fuzzer needs far more than a merge gate may spend, so the schedule
+  # remains where new inputs are actually found.
+  # pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # A manual run names its own budget; every other trigger takes the long one,
+  # except the pull-request lane, which stays inside a reviewer's patience.
+  FUZZ_MAX_TOTAL_TIME: ${{ inputs.max_total_time || (github.event_name == 'pull_request' && '60' || '900') }}
+
+jobs:
+  fuzz:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    # Above the budget plus the instrumented build, so this limit is a backstop
+    # and not what ends a healthy run.
+    timeout-minutes: 45
+    strategy:
+      # One target's crash must not cancel the budgets of the others.
+      fail-fast: false
+      matrix:
+        include:
+          - target: <target>
+            seed_dir: seed-corpus/<input-kind>
+          - target: <other-target>
+            seed_dir: seed-corpus/<other-input-kind>
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      # cargo-fuzz compiles the target with sanitizer instrumentation, which
+      # only nightly provides. Pin the release: an unpinned nightly makes an
+      # unrelated toolchain change look like a fuzzing failure.
+      - uses: dtolnay/rust-toolchain@<full-commit-sha> # master
+        with:
+          toolchain: nightly-<YYYY-MM-DD>
+      # The committed rust-toolchain.toml outranks the rustup default that the
+      # action sets, and a directory override outranks the file. Without this
+      # line the job builds on stable and fails on the sanitizer flags.
+      - run: rustup override set nightly-<YYYY-MM-DD>
+      - uses: taiki-e/install-action@<full-commit-sha> # vX.Y.Z
+        with:
+          tool: cargo-fuzz
+      # The committed seeds are reviewed inputs, not run state: copy them into
+      # the working corpus so each run starts from the coverage they reach.
+      - name: Seed the working corpus
+        run: |
+          mkdir -p "fuzz/corpus/${{ matrix.target }}" "fuzz/artifacts/${{ matrix.target }}"
+          cp -R "fuzz/${{ matrix.seed_dir }}/." "fuzz/corpus/${{ matrix.target }}/"
+      # -max_total_time bounds the run, -timeout reports a hang as a crash with
+      # its input instead of as a job timeout without one, and -rss_limit_mb
+      # does the same for runaway allocation. -artifact_prefix puts the
+      # reproducer where the upload step looks for it.
+      - name: Run ${{ matrix.target }}
+        run: >-
+          cargo fuzz run ${{ matrix.target }} fuzz/corpus/${{ matrix.target }}
+          --
+          -max_total_time="${FUZZ_MAX_TOTAL_TIME}"
+          -timeout=10
+          -rss_limit_mb=2048
+          -artifact_prefix="fuzz/artifacts/${{ matrix.target }}/"
+      # Without this the failing input exists only in the log, so the crash can
+      # be neither replayed nor minimized locally.
+      - name: Upload the reproducer
+        if: failure()
+        uses: actions/upload-artifact@<full-commit-sha> # vX.Y.Z
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}
+          if-no-files-found: ignore
+  # A scheduled failure has no pull request to report on. Add a job that opens
+  # or refreshes a single tracking issue for it, with `issues: write` scoped to
+  # that job, so an overnight crash is visible without reading the run list.
+  # No shared action covers this yet.
