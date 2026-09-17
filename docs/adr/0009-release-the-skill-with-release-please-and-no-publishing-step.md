@@ -1,4 +1,4 @@
-# ADR-0008: Release the skill with Release Please and no publishing step
+# ADR-0009: Release the skill with Release Please and no publishing step
 
 - Status: accepted
 - Date: 2026-09-17

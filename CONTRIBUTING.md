@@ -18,6 +18,15 @@ Routine convention changes do not need their own ADR. Record a successor ADR
 when changing an accepted architectural direction. Keep draft integrations
 distinct from the behavior already implemented.
 
+## Change a composite action
+
+`.github/actions/` holds behavior that other repositories run in their CI, so a
+change there is reviewed as code. Keep each action dependency-free: it runs in a
+job that only checks the repository out. State every input's default and meaning
+in the action's own README. A consumer pins by commit SHA, so a breaking change
+to an input reaches nobody until they move the pin, and an input that silently
+changes meaning at the same name is the one thing to avoid.
+
 ## Change the skill
 
 Edit `skills/project-infra/SKILL.md` for the workflow, its `references/` for
@@ -129,7 +138,7 @@ The gate cannot tell whether an instruction is correct. Before committing, also:
 Write every commit and pull request title as a
 [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/). The
 repository squash merges, so the title becomes the commit on `main` that
-[Release Please](docs/adr/0008-release-the-skill-with-release-please-and-no-publishing-step.md)
+[Release Please](docs/adr/0009-release-the-skill-with-release-please-and-no-publishing-step.md)
 reads. A CI check rejects a title it cannot parse; it runs outside
 `scripts/check.sh` because the title is not part of the working tree.
 
