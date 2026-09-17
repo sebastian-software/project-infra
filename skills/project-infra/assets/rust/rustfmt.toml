@@ -1,0 +1,7 @@
+# rustfmt's defaults are the project style; this file fixes only what would
+# otherwise depend on the machine. The edition selects how rustfmt parses the
+# source, and an editor or a direct `rustfmt` call does not read it from
+# Cargo.toml. Unix newlines, paired with an `eol=lf` rule in `.gitattributes`,
+# keep `cargo fmt --check` on a Windows checkout identical to CI.
+edition = "2024"
+newline_style = "Unix"

@@ -1,0 +1,44 @@
+# Dependency policy for `cargo deny check`. Every finding is recorded here as a
+# narrow, commented exception for the one crate that raised it; widening the
+# shared allow-list to clear a single dependency changes the policy for all of
+# them.
+
+[graph]
+# Optional and development-only dependencies carry licenses and advisories too,
+# so the graph is checked with every feature enabled.
+all-features = true
+
+[advisories]
+# A yanked release still resolves from the committed lockfile, so nothing else
+# reports that a dependency was withdrawn.
+yanked = "deny"
+# An unmaintained crate receives no fix for the next advisory; surface it while
+# there is time to replace it.
+unmaintained = "all"
+# Each entry needs a comment naming the advisory and why it is accepted.
+ignore = []
+
+[licenses]
+# Permissive licenses compatible with `MIT OR Apache-2.0` distribution.
+allow = ["Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MIT", "Unicode-3.0", "Zlib"]
+# A grant stays scoped to one crate and names the licenses that crate offers.
+exceptions = [
+  # Mozilla's CA bundle ships under a permissive data license, not a copyleft one.
+  # { allow = ["CDLA-Permissive-2.0"], crate = "webpki-roots" },
+]
+# Reject a license guessed from text that only loosely matches its known wording.
+confidence-threshold = 0.8
+
+[bans]
+# Duplicate versions are a maintenance signal; they do not make a build unsafe.
+multiple-versions = "warn"
+# A wildcard requirement accepts whatever a registry publishes next.
+wildcards = "deny"
+# Unpublished workspace members depend on each other by path, which is a
+# wildcard requirement Cargo never resolves from a registry.
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

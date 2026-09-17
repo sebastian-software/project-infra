@@ -5,9 +5,12 @@ The [common workflow](common.md) also applies.
 
 ## Declare compatibility in Cargo
 
-Use edition 2024 for new crates and resolver 3 for new workspaces with a
-compatible toolchain. Keep a standalone crate as a package; use a workspace
-when members share dependencies or configuration.
+Use edition 2024 for new crates with a compatible toolchain. Declare
+`resolver = "3"` in every edition 2024 workspace, including one that already
+exists: the resolver is a workspace-root setting, so an older value declared
+there keeps applying to all members whatever edition they use. Keep a standalone
+crate as a package; use a workspace when members share dependencies or
+configuration.
 
 Declare the minimum supported Rust version (MSRV) as `rust-version` in
 `Cargo.toml`. Keep shared values in `[workspace.package]` and opt members into
@@ -23,12 +26,21 @@ contributor toolchain and the consumer support floor serve different purposes.
 
 ## Keep formatting and lint policy native
 
-Use rustfmt with minimal configuration. Put lint levels in `[workspace.lints]`
-with member inheritance, or `[lints]` for a standalone package. Cargo then owns
-the policy alongside the code it checks.
+Use rustfmt's defaults and configure only what would otherwise differ between
+machines, as the [rustfmt excerpt](../assets/rust/rustfmt.toml) does for the
+parsing edition and the line ending. Pair the newline setting with an `eol=lf`
+rule in `.gitattributes`, so a Windows checkout formats to the same bytes the
+formatting check expects.
 
-Start with Clippy's `all` group and make warnings fail the gate. Add targeted
-rules for demonstrated defects, keeping exceptions narrow and explained.
+Put lint levels in `[workspace.lints]` with member inheritance, or `[lints]` for
+a standalone package. Cargo then owns the policy alongside the code it checks.
+
+Start with Clippy's `all` group and make warnings fail the gate. Deny broken
+intra-doc links so a reference that no longer resolves fails the rustdoc build
+instead of reaching published documentation. Add targeted rules for demonstrated
+defects, keeping exceptions narrow and explained. The
+[workspace excerpt](../assets/rust/Cargo.toml) carries this baseline next to the
+shared package metadata.
 
 For a new safe-Rust package, forbid unsafe code. Where native integration or
 low-level code requires it, document the safety argument at each unsafe operation
@@ -46,10 +58,17 @@ rustdoc build with warnings denied for published libraries. Test the MSRV and
 supported platforms separately. For mutually exclusive or system-dependent
 features, check explicit supported combinations.
 
-Use `cargo deny check` for dependency policy. Keep findings and narrow exceptions
-in `deny.toml`, with reasons. Preserve the project's license policy; do not widen
-a shared allowlist to clear one dependency finding. Treat duplicate versions as
-warnings unless their cost justifies a stricter rule.
+Use `cargo deny check` for dependency policy, starting from the
+[deny.toml excerpt](../assets/rust/deny.toml): the permissive license allow-list,
+yanked and unmaintained crates as errors, and crates.io as the only source.
+Record a finding as a narrow, commented exception for the crate that raised it,
+never by widening the shared allow-list. Treat duplicate versions as warnings
+unless their cost justifies a stricter rule.
+
+Where a check needs a long flag list, declare a Cargo alias for it, as the
+[alias excerpt](../assets/rust/.cargo/config.toml) does for coverage runs. A
+contributor and the workflow then run the same name instead of two flag lists
+that drift apart.
 
 Keep extended checks such as fuzzing and benchmarks in named gates with their
 prerequisites documented. Their cost and external requirements should not make
