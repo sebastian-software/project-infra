@@ -44,7 +44,8 @@ jobs:
         with:
           version: <mise-version>
           install_args: --locked
-      - run: scripts/check.sh
+      # The task a contributor runs; it calls scripts/check.sh.
+      - run: mise run check
 
   # The support floor the crate promises. `rust-version` in Cargo.toml is the
   # only place it is declared; any other job needing the value copies these two

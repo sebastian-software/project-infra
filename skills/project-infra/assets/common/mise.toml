@@ -29,9 +29,32 @@ auto_install = false
 not_found_auto_install = false
 not_found_system_fallback = false
 
-# Tasks give every stack the same command names. `mise which` resolves the
-# pinned binary before running it, and MISE_OFFLINE keeps the task from
-# fetching a different one.
+# Tasks give every stack the same command names: `check` is the complete gate
+# and `fast` is the development loop. CI runs `check` through jdx/mise-action,
+# so the contributor and the workflow name one command.
+
+# Each task wraps the stack's own implementation instead of restating it. A
+# Node repository runs `pnpm check` here, and a mixed repository keeps one task
+# per stack and chains them with
+# `depends = ["check:rust", "check:node", "readme:check"]`.
+[tasks.check]
+description = "Run the complete gate"
+run = "scripts/check.sh"
+
+# The checks that fail most often, for the loop between edits; a Node
+# repository runs `pnpm format:check`, `pnpm lint`, and `pnpm test` instead.
+# The complete gate stays the one that decides whether a change is ready.
+[tasks.fast]
+description = "Run formatting, lints, and unit tests"
+run = [
+  "cargo fmt --all --check",
+  "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+  "cargo test --workspace --lib --locked",
+]
+
+# The readme tasks call the pinned generator: `mise which` resolves that binary
+# before running it, and MISE_OFFLINE keeps the task from fetching a different
+# one.
 [tasks."readme:check"]
 description = "Check the generated README against its sources"
 shell = "bash -c"

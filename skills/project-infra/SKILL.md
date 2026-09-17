@@ -56,10 +56,11 @@ maintenance instructions in the same change, and keep the
 [repository-contract checks](references/common.md#test-what-two-places-must-agree-on)
 that compare them with CI passing.
 
-Run the relevant native checks without weakening them to clear failures. Report
-what changed, why any differences remain, and which checks passed or could not
-run. An aligned project can finish without a diff. Leave changes reviewable;
-publishing, PR creation, and merging follow the user's authorization.
+Run the relevant native checks, `mise run check` where the project defines that
+task, without weakening them to clear failures. Report what changed, why any
+differences remain, and which checks passed or could not run. An aligned project
+can finish without a diff. Leave changes reviewable; publishing, PR creation, and
+merging follow the user's authorization.
 
 ## Update the installed skill when requested
 
