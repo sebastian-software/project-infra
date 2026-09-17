@@ -170,9 +170,10 @@ whole release; nothing is published to a registry, and
 [`.release-please-manifest.json`](.release-please-manifest.json) records the
 released version.
 
-After the first generated release pull request is merged, drop `bootstrap-sha`
-from [`release-please-config.json`](release-please-config.json). Release Please
-ignores it from then on, and removing it keeps the configuration honest.
+That pull request carries no check runs: events created by the built-in
+`GITHUB_TOKEN` do not trigger workflows. Run `./scripts/check.sh` against its
+branch when reviewing one, so a generated `CHANGELOG.md` cannot break the gate
+on `main` after the merge.
 
 ## License
 

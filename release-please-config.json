@@ -3,7 +3,6 @@
   "release-type": "simple",
   "include-component-in-tag": false,
   "bump-minor-pre-major": true,
-  "bootstrap-sha": "5d4d8142216b06073ada3422683ce39b0586a47b",
   "packages": {
     ".": {}
   }
