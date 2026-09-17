@@ -1,0 +1,34 @@
+name: Release
+
+# Consumers read this repository directly: the Skills CLI installs the skill and
+# other repositories pin the composite actions by SHA. Nothing goes to a
+# registry, so this workflow has no publishing job. Release Please owns the
+# version, the changelog, the tag, and the GitHub Release, and those tags are
+# what ADR-0009 has consumers pin.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Let an in-flight release finish rather than cancelling it partway.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # commit the release candidate, create the tag and release
+      pull-requests: write # open and update the release pull request
+      issues: write # create the autorelease labels it applies to that pull request
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
