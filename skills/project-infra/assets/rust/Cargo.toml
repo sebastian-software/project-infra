@@ -12,5 +12,14 @@ rust-version = "1.85"
 # with `unsafe_op_in_unsafe_fn = "deny"` and document each safety argument.
 unsafe_code = "forbid"
 
+[workspace.lints.rustdoc]
+# A broken intra-doc link only shows up as missing documentation on docs.rs.
+broken_intra_doc_links = "deny"
+
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
+# Debugging leftovers and unfinished branches fail the gate instead of shipping.
+dbg_macro = "deny"
+todo = "deny"
+# Add a rule like this one once the defect it catches has occurred here.
+# unwrap_used = "deny"

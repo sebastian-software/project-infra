@@ -1,0 +1,8 @@
+# Cargo aliases give a multi-flag command one name, so the local run and the CI
+# step are the same command. These drive cargo-llvm-cov; add
+# `--exclude <crate>` for benchmark and fixture members that coverage should
+# not report on.
+[alias]
+coverage = "llvm-cov --workspace --html --output-dir target/coverage/html"
+coverage-lcov = "llvm-cov --workspace --lcov --output-path target/lcov.info"
+coverage-summary = "llvm-cov --workspace --summary-only"

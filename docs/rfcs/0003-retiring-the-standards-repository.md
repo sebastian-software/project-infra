@@ -34,33 +34,64 @@ move, and roughly 10400 lines are not.
 
 1. **Actions.** Done. They are here, the CI reference names this repository, and
    this repository's gate runs the pin checker against its own workflows.
-2. **Release blueprint.** The largest piece of remaining value, and the one a
-   product's release decision links to. The prose belongs in the CI reference;
-   the publish skeleton and the three configurations belong under `assets/`.
-   Reduce rather than copy: the reference explains a boundary, not a template to
-   paste.
+2. **Release blueprint.** Done. The prose is the "Configure Release Please"
+   section of the CI reference, and the workflow skeleton and four
+   configurations live under `assets/ci/release-please/`. The material was
+   reduced to the supported path rather than copied.
 3. **Scaffolding templates.** Decide their owner first, because a template is
    only useful where something applies it.
 4. **Stack references.** Keep what a project adapts, drop what only made sense
    as a byte-exact source. The Forgejo workflow is the one piece with no
    equivalent here.
-5. **Onboarding procedure.** Rewrite against this repository's install and
-   invoke path. It cannot be carried over as text.
-6. **Consumer pins.** Each consuming repository moves its action references when
-   it next changes its workflow.
+5. **Onboarding procedure.** Procedure defined. The
+   [migration reference](../../skills/project-infra/references/migration.md)
+   rewrites it against this repository's install and invoke path, and the
+   [`AGENTS.md` excerpt](../../skills/project-infra/assets/common/AGENTS.template.md)
+   replaces the marker-fenced guardrail block. No repository has run it yet.
+6. **Consumer pins.** Procedure defined. Each consuming repository moves its
+   action references when it next changes its workflow; the same reference
+   covers the pin and the repository-local pin checker it makes redundant. The
+   survey below records what is outstanding.
 7. **Archive.** Only once nothing resolves against the old address.
+
+## Consumer references
+
+Surveyed 2026-09-17 over the organization's seven active repositories. A
+reference is anything that names the predecessor: a pin, a CLI invocation, the
+metadata stamp, a Renovate rule, a file header, or a document. The search is the
+one the migration reference documents, so the survey is repeatable and its
+result is checked rather than remembered.
+
+| Repository  | What still names the predecessor                                                                                                                                                                                                                                                                                                 |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ardo`      | Nothing                                                                                                                                                                                                                                                                                                                          |
+| `dalo`      | Drift job running the pinned CLI behind `pending.json` and `blocked.json` guards; `.repometa.json`; a Renovate regex manager for the pin; the `AGENTS.md` guardrail block; a `rustfmt.toml` header; a contributor paragraph; a local pin checker                                                                                 |
+| `ferralk`   | Drift job running the pinned CLI behind a `pending.json` guard; `.repometa.json`; a Renovate regex manager and the `:standards` preset; the `AGENTS.md` guardrail block; headers in `rustfmt.toml` and `rust-toolchain.toml`                                                                                                     |
+| `ferrocat`  | Drift job running the pinned CLI behind a `pending.json` guard; `.repometa.json`; a Renovate regex manager; the `AGENTS.md` guardrail block; a `rustfmt.toml` header; `.standards/` entries in the docs workspace's ignore and word lists; a contributor paragraph; a local pin checker                                          |
+| `ferromark` | Four action pins in `ci.yml` and `publish.yml`; a contract test asserting that address; two documentation links; orphaned fixtures for a pin checker the repository no longer has                                                                                                                                                |
+| `mdtheme`   | `.repometa.json`; the `:standards` preset; the `AGENTS.md` guardrail block; headers in `rustfmt.toml` and `deny.toml`; `docs/standards-integration.md`                                                                                                                                                                           |
+| `palamedes` | Drift job running the CLI as a pinned `devDependency`, with a CLI/stamp alignment guard and a committed `blocked.json`; `.repometa.json`; the `:standards` preset; the `AGENTS.md` guardrail block; headers in `rustfmt.toml` and `deny.toml`; `.standards/` ignore entries; ESLint and Oxlint seed bridges; a local pin checker |
+
+Only `ferromark` holds an action pin, and it is also the repository that already
+removed its standards machinery — in one commit, `78321b8`, that took Renovate
+with it. That is the loss the migration reference is written to prevent. Its
+pins have not moved because the workflow change also has to update a test
+asserting the old owner inside the `uses:` string.
 
 ## Open questions
 
 1. Who owns the scaffolding templates: this repository as the source, or
    `repo-template` as the applier that reads them from here?
+   Answered 2026-09-17: this repository is the source, the set lives under
+   `skills/project-infra/assets/scaffolding/`, the skill applies it, and a
+   template repository, if one is kept, starts from the same files.
 2. Does the Forgejo CI workflow have a consumer that justifies carrying it?
-3. Does the release blueprint stay one page of guidance, or does it need its own
-   reference file next to `ci-and-releases.md`?
+3. Resolved: the release blueprint is a section of `ci-and-releases.md`, not a
+   reference of its own.
 4. What replaces the predecessor's `README.md` for a reader who arrives at the
    old repository, and at which point does it become a pointer?
-5. Which consumers still resolve a reference against the old repository, and how
-   is that list kept honest rather than assumed?
+5. Does the survey above become a scheduled check across the organization, or is
+   it re-run by hand before the archive step?
 
 ## Related proposals
 

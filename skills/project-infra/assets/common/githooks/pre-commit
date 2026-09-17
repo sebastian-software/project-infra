@@ -1,0 +1,24 @@
+#!/bin/sh
+# .githooks/pre-commit
+# Optional hook. Runs only the fast checks that the staged files can break, so
+# a commit touching unrelated files stays fast. Every command reads the
+# worktree; none of them formats or regenerates a file.
+set -eu
+
+# True when the index holds an added, copied, modified, or renamed path
+# matching one of the pathspecs.
+staged() {
+  git diff --cached --name-only --diff-filter=ACMR -- "$@" | grep -q .
+}
+
+if staged ':(glob)**/*.rs' Cargo.toml Cargo.lock rust-toolchain.toml ':(glob).cargo/**'; then
+  cargo fmt --all --check
+  cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+fi
+
+if staged \
+  ':(glob)**/*.ts' ':(glob)**/*.tsx' ':(glob)**/*.js' ':(glob)**/*.jsx' \
+  ':(glob)**/package.json' pnpm-lock.yaml; then
+  pnpm format:check
+  pnpm lint
+fi

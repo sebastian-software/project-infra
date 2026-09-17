@@ -1,0 +1,43 @@
+# .github/workflows/release.yml
+# Release Please owns the version, the changelog, the tag, and the GitHub
+# release. Replace every <full-commit-sha> with the commit of the release named
+# in the comment and keep that comment current.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Serialize releases and let an in-flight one finish rather than cancelling it
+# between the tag and the release it belongs to.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # push the release commit and create the tag and release
+      pull-requests: write # open and update the release pull request
+      issues: write # apply the autorelease labels to that pull request
+    # Publishing jobs read these outputs and check out `tag_name`, never `main`,
+    # so a delayed retry cannot publish newer sources under an existing version.
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@<full-commit-sha> # vX.Y.Z
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          # GitHub starts no workflow runs for events created with the built-in
+          # GITHUB_TOKEN, so the release pull request would carry no checks. A
+          # fine-grained PAT or GitHub App token makes them run; the fallback
+          # keeps a fork or a revoked secret from failing the workflow.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}

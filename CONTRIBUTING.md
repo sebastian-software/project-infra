@@ -170,10 +170,11 @@ whole release; nothing is published to a registry, and
 [`.release-please-manifest.json`](.release-please-manifest.json) records the
 released version.
 
-That pull request carries no check runs: events created by the built-in
-`GITHUB_TOKEN` do not trigger workflows. Run `./scripts/check.sh` against its
-branch when reviewing one, so a generated `CHANGELOG.md` cannot break the gate
-on `main` after the merge.
+The workflow passes `secrets.RELEASE_PLEASE_TOKEN` and falls back to
+`GITHUB_TOKEN`: that secret has to exist for the `Check` and `PR title`
+workflows to run on the release pull request, because GitHub starts no workflow
+runs for events created with the built-in token, and without it the release
+pull request opens with no checks at all.
 
 ## License
 

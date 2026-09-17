@@ -30,18 +30,55 @@ Document prerequisites for credential-dependent checks, benchmarks, fuzzing, and
 external fixtures. Run checks relevant to the change rather than making every
 edit depend on every optional system.
 
+Git hooks are an optional accelerator, never a second gate: a contributor can
+bypass them with `--no-verify`, and CI decides whether a change is acceptable.
+Keep them in a `.githooks/` directory committed with the project and enabled
+once per clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+Committed hooks are reviewed in the same diff as the checks they call, need no
+runtime, dependency, or install lifecycle script, and cannot run as a side
+effect of installing dependencies, so a project without a package manager gets
+the same hooks as one with a package manager. Commit them executable, because
+Git skips a hook file it cannot execute, and document the enable command with
+the project's other setup steps, because Git never applies it automatically.
+
+Scope `pre-commit` to the staged file types so a commit that touches only
+documentation does not pay for a compiler: select the staged paths with
+`git diff --cached` pathspecs and run the matching fast check. A push is rarer
+and is the last local point before CI sees the commits, so let `pre-push` run
+those same checks once for the whole repository, plus `mise run readme:pre-push`
+in a project with a
+[generated README](documentation.md#generate-shared-readme-content). The
+[pre-commit](../assets/common/githooks/pre-commit) and
+[pre-push](../assets/common/githooks/pre-push) excerpts show both shapes.
+
+A hook only reads the worktree. One that formats or regenerates files changes
+the content after the contributor staged and reviewed it, so the commit no
+longer matches what was reviewed; keep fix and generation commands manual. A
+package-manager-installed hook runner stays acceptable in a Node-only project
+that already carries one and follows these rules; do not add a runtime and a
+dependency to a project that otherwise needs neither.
+
 ## Keep tool selection in the project
 
 Declare package-manager versions and supported runtimes in native manifests.
 Commit lockfiles and use them in CI so dependency resolution is reviewable and
 repeatable.
 
-Use [mise](https://mise.jdx.dev) for additional shared CLI tools such as
-[mdtheme](https://github.com/sebastian-software/mdtheme), with project-local
-configuration such as the [mise.toml excerpt](../assets/common/mise.toml) and a
-committed lockfile. Document the installation step and use
-the selected tool without silently falling back to a different global version.
-Keep Cargo and package-manager metadata in their native locations.
+Use [mise](https://mise.jdx.dev) for shared CLI tools the package manager does
+not provide, such as [mdtheme](https://github.com/sebastian-software/mdtheme).
+Pin the exact version in a project-local `mise.toml`, commit the `mise.lock`
+recording each supported platform's archive and checksum, and install with
+`mise install --locked`. Disable automatic installation and system fallback so a
+missing tool fails instead of resolving to whatever the machine provides, and
+expose the tool through mise tasks so every stack shares one command name. The
+[mise.toml excerpt](../assets/common/mise.toml) shows that shape; document the
+installation step in the contributor guide. Keep Cargo and package-manager
+metadata in their native locations.
 
 This gives contributors and agents the same tool selection without depending
 on one developer's machine setup.

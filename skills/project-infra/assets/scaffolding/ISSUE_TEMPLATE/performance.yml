@@ -1,0 +1,61 @@
+# Optional. Add this form in a repository whose product makes throughput,
+# latency, or memory claims, so a report arrives with reproducible evidence
+# rather than a single number from an undescribed machine.
+name: Performance report
+description: Report a reproducible throughput, latency, or memory regression.
+title: "[Performance]: "
+labels:
+  - "type:performance"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A performance claim needs same-host before and after measurements. Keep the fixture and the command so the result can be reproduced.
+
+  - type: textarea
+    id: observation
+    attributes:
+      label: What changed?
+      description: The affected operation, and the regression or the optimization opportunity.
+    validations:
+      required: true
+
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Fixture and workload
+      description: Input size and shape, the options in effect, concurrency, and cache state.
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Reproduction command
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Before and after measurements
+      description: Repeated same-host samples with the estimator, the spread, the compared revisions, and the units.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: CPU and core count, memory, operating system, and the toolchain and tool versions involved.
+    validations:
+      required: true
+
+  - type: textarea
+    id: limitations
+    attributes:
+      label: Scope and limitations
+      description: What the measurement does not establish, and any semantic difference between the compared implementations.
+    validations:
+      required: true

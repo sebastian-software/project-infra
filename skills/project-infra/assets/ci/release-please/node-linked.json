@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "include-component-in-tag": true,
+  "separate-pull-requests": false,
+  "packages": {
+    "packages/example": {
+      "release-type": "node",
+      "package-name": "example",
+      "component": "example",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "packages/create-example": {
+      "release-type": "node",
+      "package-name": "create-example",
+      "component": "create-example",
+      "changelog-path": "CHANGELOG.md"
+    }
+  },
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "example",
+      "components": ["example", "create-example"]
+    }
+  ]
+}
