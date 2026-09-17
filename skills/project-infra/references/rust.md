@@ -45,7 +45,13 @@ shared package metadata.
 For a new safe-Rust package, forbid unsafe code. Where native integration or
 low-level code requires it, document the safety argument at each unsafe operation
 and deny `unsafe_op_in_unsafe_fn`. This makes the contract explicit at the point
-where it must be upheld.
+where it must be upheld. Enumerate the files allowed to carry `unsafe` in a
+committed list, one path and its reason per line, and check it with the
+[unsafe audit script](../assets/rust/scripts/check-unsafe.sh). A file that gains
+`unsafe` without an entry fails the check, and so does an entry whose file no
+longer carries any, so the inventory cannot quietly stop describing the tree.
+`#![forbid(unsafe_code)]` stays the crate-level default wherever the list names
+no file.
 
 ## Share the local and CI checks
 

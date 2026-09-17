@@ -7,3 +7,4 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-features --locked
 cargo deny check
+# scripts/check-unsafe.sh   # only for a repository with an unsafe allowlist
