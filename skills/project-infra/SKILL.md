@@ -52,7 +52,9 @@ infrastructure migration.
 Briefly explain the meaningful gaps and make focused changes. Use the owning
 generator for generated content; identify readers before replacing configuration.
 Keep shared rule catalogs with their owning tools. Update affected setup and
-maintenance instructions in the same change.
+maintenance instructions in the same change, and keep the
+[repository-contract checks](references/common.md#test-what-two-places-must-agree-on)
+that compare them with CI passing.
 
 Run the relevant native checks without weakening them to clear failures. Report
 what changed, why any differences remain, and which checks passed or could not
