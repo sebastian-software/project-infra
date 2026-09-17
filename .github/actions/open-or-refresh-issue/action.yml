@@ -1,0 +1,78 @@
+name: Open or refresh a tracking issue
+description: >-
+  Keep one open issue per tracked condition: open it on the first failure,
+  refresh it in place on every later one, and close it with a comment once the
+  condition clears.
+
+inputs:
+  title:
+    description: >-
+      Issue title. Written on every create and refresh, so a reworded title
+      reaches an issue that the marker matched.
+    required: true
+  label:
+    description: >-
+      Label carried by the tracking issue. It scopes the search and is applied
+      on create, so the label has to exist in the repository already.
+    required: true
+  body-file:
+    description: >-
+      Path to the report that becomes the issue body, relative to the job's
+      working directory. Mutually exclusive with `close-comment`.
+    required: false
+    default: ""
+  close-comment:
+    description: >-
+      Comment to leave while closing every matching issue, for the run that
+      finds the condition cleared. Mutually exclusive with `body-file`.
+    required: false
+    default: ""
+  marker:
+    description: >-
+      Identifier written into an HTML comment at the top of the body and used
+      instead of the title to recognize the issue. Empty matches on the exact
+      title, which a reworded title then no longer finds.
+    required: false
+    default: ""
+  token:
+    description: >-
+      Token the GitHub CLI authenticates with. The job granting it needs
+      `issues: write`.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  issue-url:
+    description: URL of the issue that was created, refreshed, or closed; empty for `none`.
+    value: ${{ steps.tracking-issue.outputs.issue-url }}
+  action:
+    description: What happened — `created`, `refreshed`, `closed`, or `none`.
+    value: ${{ steps.tracking-issue.outputs.action }}
+
+runs:
+  using: composite
+  steps:
+    - name: Open or refresh the tracking issue
+      id: tracking-issue
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        # The CLI otherwise resolves the repository from the git remote. Naming
+        # it here lets the reporting job skip the checkout it has no other use
+        # for, and keeps a job that does check out from reporting elsewhere.
+        GH_REPO: ${{ github.repository }}
+        INPUT_TITLE: ${{ inputs.title }}
+        INPUT_LABEL: ${{ inputs.label }}
+        INPUT_BODY_FILE: ${{ inputs.body-file }}
+        INPUT_CLOSE_COMMENT: ${{ inputs.close-comment }}
+        INPUT_MARKER: ${{ inputs.marker }}
+      run: |
+        # Every input stays quoted and uses the `--name=value` form, so an
+        # empty one reaches the script as an empty value instead of consuming
+        # the argument after it.
+        node "$GITHUB_ACTION_PATH/open-or-refresh-issue.mjs" \
+          "--title=$INPUT_TITLE" \
+          "--label=$INPUT_LABEL" \
+          "--body-file=$INPUT_BODY_FILE" \
+          "--close-comment=$INPUT_CLOSE_COMMENT" \
+          "--marker=$INPUT_MARKER"

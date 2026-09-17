@@ -1,9 +1,11 @@
 # Shared composite actions
 
-Five composite actions that the organization's release and check workflows
-would otherwise reimplement: crates.io retry loops, napi platform matrices, an
-action-pin checker, and a workflow-hygiene checker. They are ordinary actions in
-this repository, so consumers reference them by path and commit SHA:
+Nine composite actions that the organization's release and check workflows
+would otherwise reimplement: crates.io retry loops, napi platform matrices and
+the musl load check beside them, release-asset packaging and the gate that
+publishes a draft release, the lifecycle of a tracking issue, an action-pin
+checker, and a workflow-hygiene checker. They are ordinary actions in this repository, so consumers reference
+them by path and commit SHA:
 
 ```yaml
 - uses: sebastian-software/project-infra/.github/actions/publish-crates@<sha> # v0.0.0
@@ -58,28 +60,82 @@ Four properties make a re-run safe:
 - After each publish the action waits for the version to appear in the index
   before starting the next crate, so the dependent crate resolves.
 
+Run the [package verification script](../../skills/project-infra/assets/rust/scripts/verify-packages.sh)
+in the check workflow before a release reaches this action. It tests and
+installs the packaged archives, so a file missing from `include` fails a pull
+request instead of a version that is already on crates.io and can only be
+yanked.
+
 ## `publish-npm`
 
 Publishes one or more packages with provenance, in the given order.
 
-| Input               | Default  | Meaning                                                       |
-| ------------------- | -------- | ------------------------------------------------------------- |
-| `packages`          | `.`      | Ordered package directories, sidecars before the main package |
-| `dist-tag`          | `""`     | Empty derives it from the version                             |
-| `access`            | `public` | npm access level for a first publish                          |
-| `provenance`        | `true`   | Attach a provenance attestation                               |
-| `token`             | `""`     | Fallback npm token; empty means Trusted Publishing            |
-| `working-directory` | `.`      | Where the npm commands run                                    |
+| Input                     | Default  | Meaning                                                               |
+| ------------------------- | -------- | --------------------------------------------------------------------- |
+| `packages`                | `.`      | Ordered package directories or packed tarballs, sidecars first        |
+| `dist-tag`                | `""`     | Empty derives it from the version                                     |
+| `access`                  | `public` | npm access level for a first publish                                  |
+| `provenance`              | `true`   | Attach a provenance attestation                                       |
+| `token`                   | `""`     | Fallback npm token; empty means Trusted Publishing                    |
+| `preflight-first-publish` | `true`   | Fail before the loop on a package name that was never published       |
+| `verify`                  | `true`   | Poll the registry after the loop until every version resolves         |
+| `verify-timeout`          | `120`    | Seconds to keep polling for a version, up to 1800                     |
+| `dry-run`                 | `false`  | Rehearse the release with `npm publish --dry-run` and publish nothing |
+| `working-directory`       | `.`      | Where the npm commands run                                            |
 
 Output `dist-tag` carries what was used.
 
 The dist-tag is derived from the version of the **last** package in the list —
 the main package: `1.2.3` publishes to `latest`, `1.2.3-rc.1` to `rc`,
 `1.2.3-next.4` to `next`, and a numeric prerelease (`1.2.3-1`) to `next`. A
-release candidate therefore never lands on `latest` by omission.
+release candidate therefore never lands on `latest` by omission, and an explicit
+`dist-tag: latest` for a prerelease version is refused, because that tag is what
+an installer takes by default.
 
-The job needs `permissions: id-token: write` for provenance and for Trusted
-Publishing, and npm 11.5.1 or newer — `npm install --global npm@latest` after
+Four properties keep a release from arriving in part, and make the re-run after
+one safe:
+
+- Every package name is looked up before anything is published, and a name with
+  no published version fails the job. Trusted Publishing mints a token only for
+  a package that already exists, so a newly added sidecar would otherwise fail
+  on its own upload, after its siblings are on the registry. Publish such a
+  package once with a token, register its trusted publisher, and the preflight
+  passes from then on. It is skipped when `token` is set, because a token can
+  create a package name, and a dry run reports it as a warning instead of a
+  failure, so a new package can still be rehearsed.
+- A package whose exact version the registry already serves is skipped, so the
+  re-run after a partial release publishes what is missing instead of failing on
+  a version that can only be deprecated, never replaced.
+- A registry read that is neither 200 nor 404 — another status, or a transport
+  failure that outlives three attempts — fails the job instead of counting as
+  "not published yet". That is the rule `publish-crates` follows for the sparse
+  index, and guessing there is what turns a re-run into an attempt to overwrite
+  an existing version.
+- `verify` then polls every listed package until the registry serves it, 15
+  seconds apart and for at most `verify-timeout` seconds. npm acknowledges a
+  publish before every read replica carries it, and without this a release that
+  arrived in part leaves a green job behind. The failure names the missing
+  versions and publishes nothing further: what did go out stays, and the re-run
+  skips it.
+
+npm resolves a publish argument as a registry spec before it considers a path:
+`tool` names the package `tool` on the registry, and `npm/darwin-arm64` is the
+GitHub shorthand `owner/repo`. Every entry that is not already `.`, `./…`, `../…`
+or absolute is therefore prefixed with `./`, which is the one shape that names
+the checkout. A `.tgz` entry publishes a packed archive — what a pnpm workspace
+releases, because packing resolves a `workspace:*` sidecar reference to a
+version — and its name and version are read out of the archive, so the dist-tag,
+the skip and the verification cover a packed release too.
+
+`dry-run: true` rehearses the whole path: `npm publish --dry-run` per package,
+the preflight in warning mode, and no verification, since nothing was published.
+A `workflow_dispatch` whose `dry-run` input defaults to `true` is a release
+rehearsal that cannot publish by accident.
+
+The registry reads go to `https://registry.npmjs.org`, or to
+`npm_config_registry` when the job sets it. The job needs
+`permissions: id-token: write` for provenance and for Trusted Publishing, and
+npm 11.5.1 or newer — `npm install --global npm@latest` after
 `actions/setup-node`. Publishing runs through `npm publish` even in pnpm
 repositories, because pnpm does not implement npm's Trusted Publishing exchange.
 
@@ -112,7 +168,9 @@ shell loops) and `sidecars` (JSON array of sidecar package names).
 
 The two musl entries carry `native: false`: their runner is not a musl host, so
 the job installs the musl toolchain and cross-compiles. Everything else builds
-natively on the listed runner.
+natively on the listed runner. Nothing in that cross-compile executes what it
+produced, so pair those two entries with
+[`verify-musl-native`](#verify-musl-native).
 
 Naming is derived, never written down twice (decision D7 of the family audit):
 
@@ -121,6 +179,111 @@ Naming is derived, never written down twice (decision D7 of the family audit):
 - addon file — `<binary>.<id>.node`, the `@napi-rs/cli` default, where
   `<binary>` is the package name without its scope;
 - CI artifact — `native-<id>`.
+
+The same ids name the platform packages of a CLI published through an npm
+wrapper, so a repository that ships a binding and a CLI derives every package
+name from this one list; the CI reference's "Distribute a CLI through npm"
+section states that rule.
+
+## `verify-musl-native`
+
+Builds one musl platform package in an Alpine container and loads its addon in
+an Alpine Node runtime, so the artifact runs on a musl host before a consumer
+installs it.
+
+| Input             | Default             | Meaning                                                                 |
+| ----------------- | ------------------- | ----------------------------------------------------------------------- |
+| `package-dir`     | —                   | Platform package directory; both containers work from it                |
+| `binary`          | —                   | Addon file name inside it, as `napi-matrix` derives it                  |
+| `target`          | —                   | Rust target of the musl build; its architecture has to match the runner |
+| `build-command`   | —                   | Shell command that builds the addon, run with `RUST_TARGET` set         |
+| `build-image`     | `rust:alpine`       | Build container: a musl host carrying a Rust toolchain                  |
+| `build-packages`  | `nodejs build-base` | `apk` packages installed before the build command                       |
+| `run-image`       | `node:lts-alpine`   | Load container: the musl Node runtime a consumer installs into          |
+| `required-export` | `""`                | Function the loaded addon has to expose; empty checks only the load     |
+
+```yaml
+- uses: sebastian-software/project-infra/.github/actions/verify-musl-native@<sha> # v0.0.0
+  with:
+    package-dir: npm/linux-x64-musl
+    binary: tool.linux-x64-musl.node
+    target: x86_64-unknown-linux-musl
+    build-command: node ../../scripts/build-native.mjs
+```
+
+A cross-compiled musl addon is never executed by the job that builds it, so a
+link against a symbol the musl loader does not provide, or a build that silently
+produced a glibc artifact, reaches consumers as an addon that throws on `require`
+in Alpine. This action is the step that runs it: the build container is a musl
+host, and the load container is the runtime the consumer has.
+
+Three consequences of using containers rather than a cross-compile:
+
+- the step needs a runner whose architecture matches `target`, because nothing
+  emulates the artifact; the action checks that first and names both sides;
+- it needs a Docker daemon, so it belongs on a Linux runner;
+- the container writes as root, so the addon it leaves in the package directory
+  is root-owned for the rest of the job.
+
+The build command runs inside the build container, which is why the package
+list is an input: the Rust Alpine image carries neither a linker nor a Node.js
+interpreter for a build script. The image defaults track the current Rust and
+Node LTS releases; pass a digest-pinned reference when the lane has to be
+reproducible.
+
+## `open-or-refresh-issue`
+
+Keeps one open issue per tracked condition: opens it on the first failing run,
+refreshes it in place on every later one, and closes it with a comment once the
+condition clears. A scheduled workflow has no pull request to report on, so
+without this its failures exist only in the run list.
+
+| Input           | Default               | Meaning                                                        |
+| --------------- | --------------------- | -------------------------------------------------------------- |
+| `title`         | —                     | Issue title, written on every create and refresh               |
+| `label`         | —                     | Label that scopes the search and is applied on create          |
+| `body-file`     | `""`                  | Report that becomes the body; this is the open-or-refresh mode |
+| `close-comment` | `""`                  | Comment to close every match with; this is the other mode      |
+| `marker`        | `""`                  | Identifier written into an HTML comment at the top of the body |
+| `token`         | `${{ github.token }}` | Token the GitHub CLI authenticates with                        |
+
+Outputs: `issue-url` (empty when nothing matched) and `action`, one of
+`created`, `refreshed`, `closed`, and `none`.
+
+```yaml
+- uses: sebastian-software/project-infra/.github/actions/open-or-refresh-issue@<sha> # v0.0.0
+  with:
+    title: "chore(deps): dependency audit findings"
+    label: dependencies
+    marker: dependency-audit
+    body-file: issue-body.md
+```
+
+The job needs `permissions: issues: write`. Give it to the reporting job alone,
+not to the job that ran the failing work. Exactly one of `body-file` and
+`close-comment` is given; passing both or neither fails the step rather than
+guessing which was meant.
+
+Which issue counts as the same one is the whole point:
+
+- the search is `gh issue list --state open --label <label>`, so an unrelated
+  issue that happens to share the title is never touched. The label has to
+  exist in the repository already — `gh` fails instead of creating it;
+- without `marker`, a match is an exact title, and a reworded title therefore
+  opens a second issue and abandons the first;
+- with `marker`, a match is the comment `<!-- <marker> -->` that the action
+  writes at the top of the body, and the title is rewritten on the issue it
+  finds. That is what makes the title safe to change. A marker containing `<`,
+  `>`, `--`, or a newline is rejected, because it would end the comment and put
+  the identifier in view;
+- when several match, the lowest issue number wins, so a duplicate opened by
+  two runs at once cannot make the next refresh hop between issues. A
+  `close-comment` retires every match, not only that one.
+
+The body reaches `gh` on standard input, so a report as long as an audit log
+cannot hit the command-line length limit. The repository comes from
+`github.repository` rather than from a git remote, so the reporting job needs
+no checkout.
 
 ## `check-action-pins`
 
@@ -207,3 +370,150 @@ indentation is part of the rule: a job is a key at exactly two spaces under
 What the scan cannot see: a property inherited through a reusable workflow or a
 YAML anchor, a trigger list spread across several lines, and whether a timeout
 is long enough or a permission set minimal. Those stay review questions.
+
+## `package-binary`
+
+Packages one matrix job's binary into `<name>-<version>-<target>.tar.gz` and
+attaches it, its checksum, and its signature to the GitHub release of a tag.
+The consumer owns the matrix and the build; this action owns everything between
+the built file and the release.
+
+| Input          | Default               | Meaning                                                          |
+| -------------- | --------------------- | ---------------------------------------------------------------- |
+| `tag`          | —                     | Release tag this build belongs to                                |
+| `binary`       | —                     | Path to the built executable, with or without `.exe`             |
+| `target`       | —                     | Rust target triple, used in the archive name                     |
+| `name`         | `""`                  | Archive base name; empty derives `<binary>-<version>-<target>`   |
+| `version-file` | `Cargo.toml`          | File the version is read from                                    |
+| `extra`        | `""`                  | Newline-separated files and directories to include               |
+| `checksum`     | `per-asset`           | `per-asset` writes `<archive>.sha256`; `none` writes no checksum |
+| `sign`         | `false`               | `true` writes `<archive>.sigstore.json`                          |
+| `release`      | `true`                | Upload the assets to the release of `tag`                        |
+| `directory`    | `dist`                | Where the staged tree and the archive are written                |
+| `token`        | `${{ github.token }}` | Token for the `gh release upload` call                           |
+
+Outputs: `archive`, `checksum` (empty when `checksum` is `none`), `bundle`
+(empty unless `sign`), `name`, and `version`.
+
+```yaml
+- uses: sebastian-software/project-infra/.github/actions/package-binary@<sha> # v0.0.0
+  with:
+    tag: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+    target: ${{ matrix.target }}
+    binary: target/${{ matrix.target }}/release/tool
+    sign: true
+```
+
+The job needs `contents: write` to upload and `id-token: write` when it signs.
+The [publish-binaries excerpt](../../skills/project-infra/assets/ci/publish-binaries.yml)
+wires it into a matrix with the gate below.
+
+Three properties make the archive match what the release claims:
+
+- The version is read from the manifest in the checkout, not from the tag, and
+  the tag has to end with it at a separator — `tool-v1.2.3`, `v1.2.3`, and
+  `1.2.3` name version 1.2.3 while `v1.12.3` does not name 12.3. A workspace
+  member inheriting `version.workspace = true` resolves to the workspace's
+  version, and `version-file` also reads a `package.json` or a plain version
+  file.
+- `HEAD` has to be the commit the tag names, which fails a job that checked out
+  a branch instead of the tag and would otherwise attach newer sources to an
+  existing version.
+- An `extra` entry that does not exist fails the job. A missing completion file
+  or license is otherwise a short archive that nothing downstream reports.
+
+`checksum: per-asset` writes `<archive>.sha256` beside the archive, which is
+what one download needs to verify itself. There is no combined mode here: the
+release-wide `SHA256SUMS` is assembled once by `finish-release` from those
+files, so the release's checksum layout is decided in one place instead of in
+every matrix job.
+
+The archive holds one top-level directory named like the archive itself, so an
+extraction never scatters files and `bin-dir` stays derivable for
+`cargo binstall`. Every platform gets `.tar.gz`, Windows included: the runner
+images carry `tar`, and one format keeps the download name single-valued for an
+installer script and for `[package.metadata.binstall]`. Each entry of `extra`
+keeps its own name inside the archive, so a directory such as `completions`
+arrives as a directory.
+
+A re-run is safe in both directions: the staged tree is removed before it is
+rebuilt, so a reused workspace cannot leak a previous attempt into the archive,
+and the upload uses `--clobber`, so a leg that failed after a partial upload
+replaces its own assets instead of stopping on them.
+
+`sign: true` installs cosign and runs `cosign sign-blob --yes --bundle`, which
+writes a Sigstore bundle carrying the signature, the short-lived certificate,
+and the transparency-log entry. The certificate's identity is the workflow that
+built the archive, so a consumer verifies provenance with one more download and
+no API call:
+
+```sh
+cosign verify-blob --bundle tool-1.2.3-<target>.tar.gz.sigstore.json \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github\.com/<owner>/<repo>/\.github/workflows/' \
+  tool-1.2.3-<target>.tar.gz
+```
+
+That is the reason for a bundle rather than `actions/attest-build-provenance`:
+an attestation lives with the repository and is verified through
+`gh attestation verify`, which needs the `gh` CLI and an authenticated API call,
+while an installer script already fetching the archive can fetch one more file.
+The [installer template](../../skills/project-infra/assets/common/install.sh)
+is that script: it consumes exactly the assets this action and `finish-release`
+publish, under exactly those names. A repository that wants both can add the
+attestation action beside this one.
+
+## `finish-release`
+
+The gate between a draft release and a public one: it asserts that the release
+carries the assets the matrix was supposed to upload, assembles one
+`SHA256SUMS`, and undrafts. Run it once, after the matrix.
+
+| Input      | Default               | Meaning                                                 |
+| ---------- | --------------------- | ------------------------------------------------------- |
+| `tag`      | —                     | Release tag to check and publish                        |
+| `expected` | —                     | Asset names, one per line, or a single integer count    |
+| `sums`     | `false`               | Assemble and upload `SHA256SUMS`                        |
+| `undraft`  | `true`                | Run `gh release edit --draft=false` after the assertion |
+| `token`    | `${{ github.token }}` | Token for the `gh release` calls                        |
+
+Output `assets` carries the JSON list of asset names found on the release.
+
+```yaml
+- uses: sebastian-software/project-infra/.github/actions/finish-release@<sha> # v0.0.0
+  with:
+    tag: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+    sums: true
+    expected: |
+      tool-1.2.3-x86_64-unknown-linux-gnu.tar.gz
+      tool-1.2.3-x86_64-unknown-linux-gnu.tar.gz.sha256
+```
+
+The job needs `contents: write`. A matrix reports success per leg, which says
+that each job ran — not that each asset arrived: an upload can fail after the
+build, a leg can be skipped by a condition, and a re-run can produce an asset
+under a name nothing else reads. What a user downloads is the release, so the
+release's own asset list is what gets asserted, and a missing asset fails the
+job while the release stays a draft.
+
+The name form is the strict one: it also catches a target that uploaded under
+the wrong name, which an integer count cannot see. The count is a minimum, and
+extra assets are never a problem — a release can also carry an installer
+script, a generated formula, or the `SHA256SUMS` of a previous run. A line
+starting with `#` is a comment, so a list of a dozen names stays grouped by
+target. `SHA256SUMS` itself does not belong in the list; this action uploads it
+after the check.
+
+The order is the point. `sums: true` downloads every `*.sha256` asset and
+assembles them into one `SHA256SUMS` in the format `sha256sum -c` reads, sorted
+by file name, after the completeness check, so the combined list never
+describes a partial release and cannot disagree with the per-asset files it was
+built from. A checksum whose record names a different file than its own asset
+fails the job rather than shipping a line that verifies nothing. Undrafting is
+last: registry publishing jobs take `needs:` on this job, so no immutable
+registry version exists for a release the repository could not finish.
+
+Re-running is the recovery path. `gh release edit --draft=false` on a release
+that is already public succeeds, and `SHA256SUMS` is uploaded with `--clobber`,
+so a dispatch that resumes a failed publish by tag takes the same path as the
+first run.

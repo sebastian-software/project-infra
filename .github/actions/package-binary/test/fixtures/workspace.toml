@@ -1,0 +1,7 @@
+# A workspace member inheriting the workspace version.
+[workspace.package]
+version = "0.4.0"
+
+[package]
+name = "tool"
+version.workspace = true

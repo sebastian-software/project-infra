@@ -20,14 +20,14 @@ Node.js or Rust code still uses the common, CI, and documentation guidance.
 
 Read only the references relevant to the requested work:
 
-| Scope                                                                      | Reference                                          |
-| -------------------------------------------------------------------------- | -------------------------------------------------- |
-| Project boundaries, local checks, tool and configuration ownership         | [Common workflow](references/common.md)            |
-| JavaScript or TypeScript packages, apps, and documentation sites           | [Node.js and TypeScript](references/node.md)       |
-| Rust packages, workspaces, and native components                           | [Rust](references/rust.md)                         |
-| CI, dependency updates, or distributed artifacts                           | [CI and releases](references/ci-and-releases.md)   |
-| Setup instructions, generated READMEs, decision records, or agent guidance | [Documentation](references/documentation.md)       |
-| A repository that still references the retired standards CLI               | [Standards CLI migration](references/migration.md) |
+| Scope                                                                                            | Reference                                          |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| Project boundaries, local checks, tool and configuration ownership                               | [Common workflow](references/common.md)            |
+| JavaScript or TypeScript packages, apps, and documentation sites                                 | [Node.js and TypeScript](references/node.md)       |
+| Rust packages, workspaces, and native components                                                 | [Rust](references/rust.md)                         |
+| CI, dependency updates, or distributed artifacts                                                 | [CI and releases](references/ci-and-releases.md)   |
+| Setup instructions, generated READMEs, decision records, agent guidance, or a documentation site | [Documentation](references/documentation.md)       |
+| A repository that still references the retired standards CLI                                     | [Standards CLI migration](references/migration.md) |
 
 Use the common guidance for infrastructure changes and the documentation
 guidance when the contributor workflow changes. Resolve these paths relative
@@ -52,12 +52,15 @@ infrastructure migration.
 Briefly explain the meaningful gaps and make focused changes. Use the owning
 generator for generated content; identify readers before replacing configuration.
 Keep shared rule catalogs with their owning tools. Update affected setup and
-maintenance instructions in the same change.
+maintenance instructions in the same change, and keep the
+[repository-contract checks](references/common.md#test-what-two-places-must-agree-on)
+that compare them with CI passing.
 
-Run the relevant native checks without weakening them to clear failures. Report
-what changed, why any differences remain, and which checks passed or could not
-run. An aligned project can finish without a diff. Leave changes reviewable;
-publishing, PR creation, and merging follow the user's authorization.
+Run the relevant native checks, `mise run check` where the project defines that
+task, without weakening them to clear failures. Report what changed, why any
+differences remain, and which checks passed or could not run. An aligned project
+can finish without a diff. Leave changes reviewable; publishing, PR creation, and
+merging follow the user's authorization.
 
 ## Update the installed skill when requested
 

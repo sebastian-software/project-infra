@@ -1,4 +1,19 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>sebastian-software/renovate-config"]
+  "extends": ["github>sebastian-software/renovate-config"],
+  "packageRules": [
+    {
+      "description": "Frozen comparison baseline: its dependency versions are part of what the tests compare against, so an update would move the baseline instead of the product.",
+      "matchManagers": ["cargo"],
+      "matchFileNames": ["tools/reference/**"],
+      "enabled": false
+    },
+    {
+      "description": "Published library manifests keep their range requirements so an application can resolve one shared version; replace moves such a requirement only when the new version falls outside it. Everything else in the repository stays on the shared preset's range strategy.",
+      "matchManagers": ["cargo"],
+      "matchFileNames": ["crates/example/Cargo.toml"],
+      "matchDepTypes": ["dependencies"],
+      "rangeStrategy": "replace"
+    }
+  ]
 }

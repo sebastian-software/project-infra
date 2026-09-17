@@ -29,14 +29,114 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
 
+  # The complete gate script a contributor runs: formatting, lints, tests, and
+  # the dependency policy, on one platform.
   rust:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
       # rustup on the runner installs the toolchain from rust-toolchain.toml.
-      - run: cargo install cargo-deny --locked
-      - run: scripts/check.sh
+      # mise installs the CLI helpers the script calls, cargo-deny among them,
+      # at the versions mise.toml pins, so this job and a local run use the
+      # same binaries.
+      - uses: jdx/mise-action@<full-commit-sha> # vX.Y.Z
+        with:
+          version: <mise-version>
+          install_args: --locked
+      # The task a contributor runs; it calls scripts/check.sh.
+      - run: mise run check
+
+  # The support floor the crate promises. `rust-version` in Cargo.toml is the
+  # only place it is declared; any other job needing the value copies these two
+  # steps instead of repeating the number.
+  msrv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      # `[workspace.package]` and `[package]` both spell it `rust-version`.
+      - id: msrv
+        run: |
+          version="$(sed -n 's/^rust-version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)"
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      # `+$MSRV` outranks rust-toolchain.toml. Installing the floor and making
+      # it the rustup default does not, and leaves the job checking stable.
+      - env:
+          MSRV: ${{ steps.msrv.outputs.version }}
+        run: |
+          rustup toolchain install "$MSRV" --profile minimal
+          cargo "+$MSRV" check --workspace --all-targets --all-features --locked
+
+  # Only for a published library: the flags docs.rs builds with, so a rustdoc
+  # warning fails here instead of reaching the published documentation.
+  rustdoc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      - env:
+          RUSTDOCFLAGS: -D warnings --cfg docsrs
+        run: cargo doc --workspace --all-features --no-deps --locked
+
+  # Tests only. Formatting, lints, and the dependency policy do not differ per
+  # operating system, and the `rust` job has already run them.
+  platforms:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      - run: cargo test --workspace --all-features --locked
+
+  # Only for a repository that publishes a coverage number. The floor lives in
+  # the committed coverage-floor file the script reads, and the measured number
+  # reaches the run summary and the artifact list before the floor is enforced.
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      # llvm-profdata and llvm-cov ship in this component. rust-toolchain.toml
+      # leaves it out because only this job instruments a build.
+      - run: rustup component add llvm-tools-preview
+      # mise.toml pins cargo-llvm-cov, so this job and a local run measure with
+      # the same binary.
+      - uses: jdx/mise-action@<full-commit-sha> # vX.Y.Z
+        with:
+          version: <mise-version>
+          install_args: --locked
+      # Writes target/lcov.info and the summary, then exits non-zero for a
+      # floor it missed.
+      - run: scripts/coverage.sh
+      - uses: actions/upload-artifact@<full-commit-sha> # vX.Y.Z
+        # The run that failed the floor is the one whose report someone reads,
+        # so the upload does not depend on the step above succeeding.
+        if: always()
+        with:
+          name: coverage
+          path: target/lcov.info
+          # A run that failed before measuring has no report to keep, which the
+          # upload notes instead of raising a second failure.
+          if-no-files-found: warn
+          # Long enough to compare a pull request with the run it came from.
+          retention-days: 14
+
+  # Only for mutually exclusive or system-dependent features: `--all-features`
+  # builds their union and never builds the combinations a consumer selects.
+  # One line per documented profile.
+  features:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      - run: |
+          cargo check -p <crate> --no-default-features --locked
+          cargo check -p <crate> --no-default-features --features <profile> --locked
 
   # Only for a repository with a generated README. The action installs the
   # generator version recorded in the committed mise.toml and mise.lock;
@@ -66,9 +166,12 @@ jobs:
           gate-job: gate
 
   # Stable name for branch protection. Runs after failures and treats a
-  # skipped or cancelled job as a failure.
+  # skipped or cancelled job as a failure. Keep `needs` and the tests in step
+  # with the jobs above: a job kept from the optional set, such as `rustdoc` or
+  # `features`, needs an entry in both, and a job that runs only on a schedule
+  # belongs in neither, because it reports `skipped` on every pull request.
   gate:
-    needs: [node, rust, readme, workflows]
+    needs: [node, rust, msrv, platforms, readme, workflows]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -76,5 +179,7 @@ jobs:
       - run: |
           test "${{ needs.node.result }}" = "success"
           test "${{ needs.rust.result }}" = "success"
+          test "${{ needs.msrv.result }}" = "success"
+          test "${{ needs.platforms.result }}" = "success"
           test "${{ needs.readme.result }}" = "success"
           test "${{ needs.workflows.result }}" = "success"

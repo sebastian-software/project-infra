@@ -1,0 +1,157 @@
+# .github/workflows/publish.yml
+# Release Please creates the tag and the draft release, the matrix attaches one
+# archive per target, and the gate publishes the release once every expected
+# asset is there. Replace every <full-commit-sha> with the commit of the release
+# named in the comment, keep that comment current, and replace <tool> with the
+# binary name. Add the targets the product supports.
+name: Publish
+
+on:
+  push:
+    branches: [main]
+  # The retry path: a run that failed after the tag existed resumes by tag
+  # instead of needing a new version.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to resume
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Releases are serialized, and an in-flight one finishes: cancelling between
+# the tag and its assets leaves a draft release nothing completes.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # push the release commit and create the tag and release
+      pull-requests: write # open and update the release pull request
+      issues: write # apply the autorelease labels to that pull request
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@<full-commit-sha> # vX.Y.Z
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+  build:
+    needs: release-please
+    # `!cancelled()` rather than `always()`: the dispatch path skips
+    # release-please, while a cancelled run stops instead of uploading.
+    if: >-
+      ${{ !cancelled() && (inputs.tag != '' ||
+      needs.release-please.outputs.releases_created == 'true') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: write # upload the assets to the release
+      id-token: write # keyless Sigstore signing
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+        with:
+          # Built from the tag, never from the branch: package-binary fails
+          # when HEAD is not the commit the tag names.
+          ref: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+      - uses: dtolnay/rust-toolchain@<full-commit-sha> # vX.Y.Z
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+      # The Windows leg needs no `.exe` here; the action resolves the suffix.
+      - uses: sebastian-software/project-infra/.github/actions/package-binary@<full-commit-sha> # vX.Y.Z
+        with:
+          tag: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+          target: ${{ matrix.target }}
+          binary: target/${{ matrix.target }}/release/<tool>
+          extra: |
+            README.md
+            LICENSE-MIT
+            LICENSE-APACHE
+          sign: true
+
+  # The gate. A job that publishes to a registry takes `needs: finish`, so no
+  # immutable registry version exists for a release that stayed a draft.
+  finish:
+    needs: [release-please, build]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+    steps:
+      # The expected asset names carry the version, which only the tag holds on
+      # the dispatch path.
+      - id: version
+        run: |
+          case "$TAG" in
+            *-v*) version="${TAG##*-v}" ;;
+            v*) version="${TAG#v}" ;;
+            *) version="$TAG" ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: sebastian-software/project-infra/.github/actions/finish-release@<full-commit-sha> # vX.Y.Z
+        with:
+          tag: ${{ env.TAG }}
+          sums: true
+          # Three assets per target, so a leg that uploaded only its archive
+          # keeps the release a draft. SHA256SUMS is not listed: this action
+          # uploads it after the check.
+          expected: |
+            <tool>-${{ steps.version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
+            <tool>-${{ steps.version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz.sha256
+            <tool>-${{ steps.version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz.sigstore.json
+            # the same three names for every other target in the matrix
+
+  # The tap is fed by the release instead of by a token: the formula is built
+  # from the published release's own SHA256SUMS, uploaded beside the archives,
+  # and the tap repository pulls it from there on its own schedule.
+  homebrew:
+    needs: [release-please, finish]
+    if: ${{ !cancelled() && needs.finish.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # upload the formula to the release
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+        with:
+          # The generator ships with the product, so it prints the formula the
+          # released sources describe.
+          ref: ${{ env.TAG }}
+      # One download instead of four archives, and the hashes are the ones the
+      # release published: a name or a checksum the release does not carry
+      # fails the generator.
+      - run: gh release download "$TAG" --pattern SHA256SUMS --clobber
+      - run: sh scripts/homebrew-formula.sh "$TAG" SHA256SUMS > <tool>.rb
+      - run: gh release upload "$TAG" <tool>.rb --clobber

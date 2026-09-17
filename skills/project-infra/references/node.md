@@ -75,6 +75,17 @@ framework, and tests. When both linters run, give overlapping checks a clear
 owner. Keep rule definitions in the shared configuration and local exceptions
 narrow. Remove a lint check only when its required behavior remains covered.
 
+The shared ESLint configuration carries the spell check as well, through its
+`@cspell/spellchecker` rule: the project's lint command reports a misspelling in
+the identifiers, strings, and comments ESLint already parses, so the check has
+one owner, needs no separate tool, and adds no step to the gate. Keep the
+project's own vocabulary in a `cspell.json`, which the rule finds by searching
+upward from each checked file, so a workspace can hold the list beside the code
+it covers. Limit that list to product names, tool names, and identifiers no
+general dictionary can hold; a list that gains a word for every false positive
+stops catching anything. A project area that does not run ESLint has no reader
+for such a file and carries none.
+
 ## Type contracts and modules
 
 Enable `strict`, `noUncheckedIndexedAccess`, and `exactOptionalPropertyTypes`.
@@ -102,6 +113,11 @@ modules the compiler cannot resolve on its own.
 
 Use Vite for application builds, tsdown for distributable package bundles, and
 Vitest for tests. Configure only the outputs and environments the product needs.
+Where the project gates coverage, have `vitest.config.ts` read
+`coverage.thresholds.lines` from the `node` entry of the committed
+`coverage-floor` file that the
+[coverage gate](../assets/rust/scripts/coverage.sh) defines, so the floor has
+one source in the repository instead of a literal in the config.
 The [tsdown excerpt](../assets/node/tsdown.config.ts) configures an ESM package
 bundle with declarations.
 
@@ -117,5 +133,100 @@ file is the place for DOM methods jsdom does not implement, such as
 `Element.prototype.scrollIntoView`.
 
 From a clean install, the project gate should cover formatting, lint, types,
-tests, and the build. A successful source build is not sufficient for a published
-package: also run the relevant [consumer-artifact checks](ci-and-releases.md#verify-the-artifact-consumers-receive).
+tests, and the build. A source build that succeeds says nothing about the
+archive a consumer installs, so a publishable package runs `pack:check` after
+`build`, as the [package scripts](../assets/node/package.json) excerpt shows.
+The [verify-pack script](../assets/node/scripts/verify-pack.mjs) packs the
+package, compares the archive against the entries in `files` and every path
+`main`, `types`, `bin`, and `exports` advertise, installs that archive alone in
+an empty consumer, and loads every subpath from there: through `import`, and
+through `require` wherever a `require` condition promises a CommonJS
+resolution. It also checks that the declarations a condition names are
+installed, because type resolution stops at the first matching `types`
+condition and never reports the file it would have used. Pass the package
+directory as an argument when the script runs from a workspace root. The other
+[artifact checks](ci-and-releases.md#verify-the-artifact-consumers-receive)
+cover the remaining distribution shapes.
+
+Copy every license text into each publishable package of a dual-licensed
+workspace and list the files in `files`. `pnpm publish` embeds only a
+workspace-root file whose name matches `LICEN{S,C}E{,.*}`, and npm
+force-includes only `license{,.*}` from the package directory itself, so a
+package declaring `MIT OR Apache-2.0` publishes with neither text unless both
+are in the package. Copy them from the repository root in a build step so a new
+package cannot be added without them, and let the packed-artifact check fail the
+package that is still missing one.
+
+Prove in CI that the lockfile still describes the manifests. A frozen install
+shows only that the committed lockfile can satisfy them, and it never rewrites
+the file, so a lockfile that installs while no longer matching a fresh
+resolution still passes. That gap opens when a package-manager major changes the
+lockfile format, or when workspace settings such as overrides and allowed build
+scripts change. Run `pnpm install --lockfile-only` and then
+`git diff --exit-code pnpm-lock.yaml`: the working tree stays unchanged exactly
+when the committed lockfile is what the current manifests, settings, and pnpm
+version produce.
+
+Hold the declared runtime floor in CI as well. A matrix lane installs the newest
+release of its major, so no lane runs the floor `engines` declares, and a
+tooling update that needs a newer runtime raises the consumer's floor without
+touching that field. Add a lane that pins the runtime instead: install and
+build on the version the workspace's `engines` floor names, then switch to the
+published package's `engines` floor and run that package's tests against the
+build output.
+The two floors differ whenever the toolchain needs a newer runtime than the
+package it produces, and the published floor is the one a consumer reads. A
+dependency that outgrows the build floor then fails the build step, and output
+that relies on a newer runtime API fails the test step. The
+[workflow excerpt](../assets/ci/check.yml) shows a single Node job; the floor
+lane is a second job with the same install step and those two pinned runtime
+setups.
+
+Run the version matrix over the supported majors for the steps that are cheap
+and runtime-sensitive, such as install, lint, type check, and unit tests, and
+keep the expensive ones on one lane: browser downloads, end-to-end runs, site
+builds, and example matrices exercise the same code on every major and pay their
+full cost again on each. Differences between majors surface in the cheap steps
+first, as the Web Storage globals above do.
+
+A package that ships a compiled binary per platform needs checks the packed
+artifact cannot make. Its musl targets cross-compile on a glibc runner, so no
+step executes what the build produced, and an addon that resolves a symbol the
+musl loader does not provide fails on the consumer's first `require` in Alpine.
+Build the musl package on a musl host and load the addon in the musl Node
+runtime a consumer installs; the `verify-musl-native` action does both in
+containers, on a runner whose architecture matches the target because nothing
+emulates the artifact. Run it in the check workflow rather than only in the
+release lane, so the pull request that breaks the musl build is the one that
+fails. The addon's panic behavior is a Cargo profile setting, described in
+[Rust](rust.md#configure-releases-for-their-consumers).
+
+Guard the publish itself with a `prepublishOnly` script in every platform
+package. npm has no opinion about what `main` or `bin` points at, so a package
+whose binary never arrived from the build matrix publishes as an empty shell,
+and the consumer whose `optionalDependencies` select that platform fails when it
+loads the addon. The [native artifact guard](../assets/node/scripts/assert-native-artifact.mjs)
+reads the manifest, collects the artifacts it advertises, and fails when one of
+them is missing or empty. Run it in CI as well, after the lane collects the
+built artifacts, so the state that would be published is rejected before the
+release job starts.
+
+Hold each artifact to a byte ceiling with the
+[binary size check](../assets/node/scripts/check-binary-size.mjs). A native
+addon ships once per platform, so a dependency that links in a character table
+or a second runtime multiplies across the matrix and arrives as a larger
+download for every consumer, while every test stays green. The check records a
+measured baseline per artifact and a ceiling with headroom above it instead of
+comparing exactly, because sizes move with toolchain patch releases and linkers
+and an exact comparison reports growth that is not there. Raising a ceiling is
+then an edit that carries its reason in the commit message.
+
+Keep profile-guided optimization opt-in, and let it fail loudly. A local build
+stays fast by default while an environment variable turns on the instrument,
+train, merge, and rebuild cycle for the published addon. A missing profiling
+tool, a training run that wrote no profile data, or a profile that does not
+match the units being compiled has to stop that build. Falling back to a plain
+release build instead publishes an addon slower than the one that was measured,
+and no later check can tell the two apart. A profile also applies only to the
+target it was collected for, so a cross-compiled platform either trains in its
+own environment or is built without one, said plainly in the build output.

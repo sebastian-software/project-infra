@@ -1,0 +1,161 @@
+# .github/workflows/bench-compare.yml
+# The wall-time comparison lane for a Cargo project with Criterion benchmarks:
+# one job builds the merge base and the pull request's head, measures both back
+# to back on the same runner, and writes the table into the run summary. It
+# reports a slower number and never fails on one, so keep it out of branch
+# protection and out of the aggregate gate job.
+# Replace every <full-commit-sha> with the commit of the release named in the
+# comment and keep that comment current.
+name: Benchmark comparison
+
+on:
+  # Only the sources that can move a measurement. Every run builds the project
+  # twice, which is too much to spend on a change that cannot change a number.
+  pull_request:
+    paths:
+      - ".github/workflows/bench-compare.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "benches/**"
+      - "crates/<crate>/src/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # The bench target both revisions build. It selects the executable to copy
+  # out of the build and names the rows of the table.
+  BENCH: <bench-target>
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    # Two builds and two measured runs. A lane that needs more than this is
+    # worth shortening rather than waiting for.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+        with:
+          # `git merge-base` reads both branches from the local clone, which a
+          # shallow checkout does not contain.
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@<full-commit-sha> # master
+      - uses: Swatinem/rust-cache@<full-commit-sha> # vX.Y.Z
+      - name: Add the merge base as a worktree
+        id: revisions
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # The merge base, not the tip of the base branch: the tip carries
+          # everything merged since this branch started, and the cost of those
+          # changes would be read as this branch's.
+          merge_base="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
+          git worktree add --detach "$RUNNER_TEMP/base" "$merge_base"
+          echo "merge-base=$merge_base" >> "$GITHUB_OUTPUT"
+      - name: Build both benchmark binaries
+        run: |
+          set -euo pipefail
+          build() {
+            local manifest="$1" target="$2" binary="$3" executable
+            # json-render-diagnostics keeps compiler errors readable on stderr
+            # and leaves stdout to the messages that name the built binary;
+            # plain json would bury a build failure in the filter's input.
+            # jq ships with the GitHub-hosted runner images.
+            executable="$(
+              CARGO_TARGET_DIR="$target" cargo bench --locked --no-run \
+                --manifest-path "$manifest" --bench "$BENCH" \
+                --message-format=json-render-diagnostics |
+                jq -r --arg bench "$BENCH" \
+                  'select(.reason == "compiler-artifact" and .target.name == $bench)
+                   | .executable | strings' |
+                tail -n 1
+            )"
+            test -n "$executable"
+            cp "$executable" "$binary"
+          }
+          # Separate target directories: the two revisions carry the same
+          # package name and version, so one shared directory would have each
+          # build invalidate the other's artifacts. The head keeps `target/`,
+          # which the cache action restores.
+          build "$RUNNER_TEMP/base/Cargo.toml" "$RUNNER_TEMP/target-base" "$RUNNER_TEMP/bench-base"
+          build Cargo.toml target "$RUNNER_TEMP/bench-head"
+      - name: Measure the merge base and the head
+        run: |
+          set -euo pipefail
+          measure() {
+            local binary="$1" tree="$2" state="$3" out="$4"
+            # A restored cache can hold Criterion state from another commit,
+            # and Criterion then loads no baseline, prints no measurement, and
+            # still exits zero. Each side starts from an empty directory.
+            rm -rf "$state"
+            # Each binary runs inside its own source tree, so a benchmark that
+            # opens a fixture by relative path reads its own revision's.
+            ( cd "$tree" && CARGO_TARGET_DIR="$state" "$binary" --bench \
+                --warm-up-time 1 --measurement-time 5 --sample-size 20 \
+                --output-format bencher ) | tee "$out"
+          }
+          # Shorter than Criterion's defaults, to stay inside a pull request's
+          # budget while the sample count still supports a median. The bencher
+          # format prints one `ns/iter` line per benchmark id, which is what
+          # the table below reads.
+          measure "$RUNNER_TEMP/bench-base" "$RUNNER_TEMP/base" "$RUNNER_TEMP/criterion-base" merge-base.txt
+          measure "$RUNNER_TEMP/bench-head" "$GITHUB_WORKSPACE" "$RUNNER_TEMP/criterion-head" head.txt
+      - name: Publish the comparison
+        env:
+          MERGE_BASE: ${{ steps.revisions.outputs.merge-base }}
+        run: |
+          set -euo pipefail
+          python3 - merge-base.txt head.txt >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import os
+          import re
+          import sys
+
+          MEASUREMENT = re.compile(r"^test\s+(?P<name>.+?)\s+\.\.\.\s+bench:\s+(?P<ns>[\d,]+) ns/iter")
+
+
+          def measurements(path):
+              """The median nanoseconds per benchmark id in one bencher-format run."""
+              with open(path, encoding="utf-8") as handle:
+                  found = (MEASUREMENT.match(line) for line in handle)
+                  return {m["name"]: int(m["ns"].replace(",", "")) for m in found if m}
+
+
+          base, head = (measurements(path) for path in sys.argv[1:3])
+
+
+          def cell(value):
+              return f"{value:,}" if value else "n/a"
+
+
+          print("### Benchmark comparison")
+          print()
+          print(f"Merge base `{os.environ['MERGE_BASE']}` against this pull request's head.")
+          print()
+          print("| Benchmark | Merge base (ns) | Head (ns) | Head/base |")
+          print("| --- | ---: | ---: | ---: |")
+          for name in sorted(base.keys() | head.keys()):
+              before, after = base.get(name), head.get(name)
+              ratio = f"{after / before:.2f}x" if before and after else "n/a"
+              print(f"| `{name}` | {cell(before)} | {cell(after)} | {ratio} |")
+          print()
+          print(
+              "Elapsed time on a shared runner. Read the ratio as indicative and "
+              "reproduce a suspected regression locally; this lane never fails on "
+              "a slower number."
+          )
+          # A benchmark harness that prints nothing still exits zero, so the
+          # empty table would otherwise report success.
+          if not base or not head:
+              raise SystemExit("::error::the benchmark lane produced no measurements")
+          PY
+  # A lane that may gate needs a measurement elapsed time cannot give. Count
+  # instructions over a fixed fixture instead, under Callgrind, comparing these
+  # same two revisions in this same job, and let a threshold decide only once
+  # the lane's spread has been observed on real pull requests.
