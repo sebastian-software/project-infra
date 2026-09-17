@@ -63,6 +63,13 @@ installed files from the source recorded in `skills-lock.json`. The standard
 GitHub installation follows the repository's default branch; an explicitly
 selected ref continues to track that ref.
 
+Read the
+[release notes](https://github.com/sebastian-software/project-infra/releases)
+first. They describe what changed in the instructions, which is what decides
+whether applying them again is worth a session; the lockfile hash only reports
+that something changed. A release tag is also the ref to select when a project
+needs a fixed instruction set rather than the default branch.
+
 1. Preserve any local edits to the installed package before updating; the
    installer replaces upstream files.
 2. Review the changed skill, lock entry, and app links with `git status` and

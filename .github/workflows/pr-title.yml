@@ -1,0 +1,45 @@
+name: PR title
+
+# A squashed pull request title becomes the commit message on main, which is
+# what Release Please reads. An unparseable title is silently dropped from the
+# changelog, so it is checked here instead.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: pr-title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # feat and fix release the skill package; the rest never do.
+          types: |
+            feat
+            fix
+            docs
+            ci
+            chore
+            refactor
+            revert
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: >-
+            The subject "{subject}" of pull request "{title}" must start with a
+            lowercase letter.
+          # GitHub offers the sole commit's message instead of the title when
+          # squashing a one-commit pull request, so that message is checked too.
+          validateSingleCommit: true

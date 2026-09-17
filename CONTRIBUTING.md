@@ -94,9 +94,9 @@ implement it, run automation, or migrate other repositories.
 
 ## Run the checks
 
-`scripts/check.sh` is the complete gate. CI runs the same script, so a failure
-reproduces locally without reading the workflow. It needs Node.js 22.20.0 or
-newer and Python 3.11 or newer, and it writes nothing:
+`scripts/check.sh` is the complete gate for the working tree. CI runs the same
+script, so a failure reproduces locally without reading the workflow. It needs
+Node.js 22.20.0 or newer and Python 3.11 or newer, and it writes nothing:
 
 ```sh
 ./scripts/check.sh
@@ -123,6 +123,43 @@ The gate cannot tell whether an instruction is correct. Before committing, also:
 3. Check examples, dates, and index entries.
 4. Run `git diff --check` after staging new files or changing tracked files.
 5. State which checks ran and identify examples that have not been executed.
+
+## Commit and release
+
+Write every commit and pull request title as a
+[Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/). The
+repository squash merges, so the title becomes the commit on `main` that
+[Release Please](docs/adr/0008-release-the-skill-with-release-please-and-no-publishing-step.md)
+reads. A CI check rejects a title it cannot parse; it runs outside
+`scripts/check.sh` because the title is not part of the working tree.
+
+The version describes the installed package, not the repository. Choose the type
+from the paths the change touches:
+
+| Change                                                               | Type                                                   | Releases |
+| -------------------------------------------------------------------- | ------------------------------------------------------ | -------- |
+| Anything under `skills/project-infra/`, including the Skills CLI pin | `feat` for new or changed guidance, `fix` for a defect | yes      |
+| ADRs, RFCs, README, installation guide, this guide                   | `docs`                                                 | no       |
+| Workflows, `scripts/`, release configuration                         | `ci`                                                   | no       |
+| Housekeeping, restructuring, reverts                                 | `chore`, `refactor`, `revert`                          | no       |
+
+Mark a change that consumers must act on with `!` or a `BREAKING CHANGE:`
+footer, and say in the body what a consuming project has to do. While the
+version stays below `1.0.0`, such a change raises the minor version rather than
+the major one. Nothing in the gate compares the type against the diff, so check
+that pairing in review: a skill change labeled `docs` withholds a release a
+consumer should see.
+
+Release Please opens a release pull request once releasable commits land on
+`main`. Review the version, `CHANGELOG.md`, and `version.txt` in that pull
+request and merge it to create the tag and the GitHub Release. Merging it is the
+whole release; nothing is published to a registry, and
+[`.release-please-manifest.json`](.release-please-manifest.json) records the
+released version.
+
+After the first generated release pull request is merged, drop `bootstrap-sha`
+from [`release-please-config.json`](release-please-config.json). Release Please
+ignores it from then on, and removing it keeps the configuration honest.
 
 ## License
 
