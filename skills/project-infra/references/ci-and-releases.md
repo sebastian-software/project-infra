@@ -70,14 +70,54 @@ and such an aggregate gate.
 
 ## Share dependency policy
 
-Extend `github>sebastian-software/renovate-config`, as in the
-[renovate.json excerpt](../assets/ci/renovate.json). Keep general update timing,
-grouping, and automerge policy in that shared preset. Consumers own only their
-specific exceptions. This prevents repository copies from drifting apart.
+Extend `github>sebastian-software/renovate-config` and leave everything that
+holds in more than one repository to that preset: update timing and the
+release-age cooldown, the commit type that lets a dependency update reach a
+release, grouping for components that have to move together, automerge policy,
+the digest pinning that [reproducible CI](#keep-ci-reproducible-and-bounded)
+requires, lockfile maintenance, the default range strategy, and a custom manager
+for a Git revision that every repository pins at the same file name. Both
+`packageRules` and `customManagers` merge a preset's entries with the consumer's
+instead of replacing them, so a rule that turns up in a second repository
+belongs in the preset. Name the source as `github>`: the `local>` form resolves
+against whichever platform the running bot is connected to, so the same line
+names a different source under a different host.
 
-Update compatibility-sensitive components together. Check that the shared preset
-covers the selected lint configuration, linter, and type-aware backend. Improve
-the preset or add a narrow consumer rule when a required relationship is missing.
+Improve the preset when a required relationship is missing — a lint
+configuration and its linter, a runtime and its bindings, a compiler and its
+type-aware backend all break when one of them moves alone — instead of adding a
+consumer rule that the next repository has to work out again. A project that
+needs a shared setting before the preset carries it sets that one line locally
+and drops it once the preset does.
+
+The consumer file then holds only what follows from this repository's layout.
+Two exceptions recur: a path whose dependencies are frozen because the tests
+compare against them, and the manifests of published libraries, whose
+requirements stay ranges so an application can resolve one shared version rather
+than the exact one this repository last saw. Give each rule a `description`,
+because the file is strict JSON with no comments and that text is what the pull
+request and the next reader get. The
+[renovate.json excerpt](../assets/ci/renovate.json) shows both shapes. Where the
+package manager applies a release-age gate of its own, keep its exemptions
+aligned with the preset's, or an update branch cannot install the version its
+own pull request proposes.
+
+An updater moves only a version it can find. A dependency in a native manifest
+is found by the manager that owns the file; a version written anywhere else
+stays put until something is configured to read it, and the pin then means
+frozen rather than current. Decide which one it is per pin, and record the
+decision where the pin lives.
+
+| Pin                                                    | What moves it                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A tool version in `mise.toml`                          | The `mise` manager, which is enabled by default, resolves a `github:` tool against that repository's releases and reads `version_prefix` as a version filter. Refreshing the committed `mise.lock` runs mise, which a self-hosted bot has to be allowed to do |
+| The `version:` input of `jdx/mise-action`              | The `github-actions` manager, which reads the version inputs of the actions it knows, this one included                                                                                                                                                       |
+| A Git revision in `mdtheme.yaml` or a generator script | A custom manager pairing the revision with the branch it follows. The file names are identical across repositories, so that rule belongs in the shared preset                                                                                                 |
+| A tool version inside a workflow run step              | Nothing. Install the tool through `mise.toml` instead, or carry the version in a `*_VERSION` environment variable annotated with `# renovate:`, which Renovate's `customManagers:githubActionsVersions` preset reads                                          |
+
+A pin that no manager reaches and that nobody has agreed to move by hand goes
+stale without reporting it. Name such a pin in the contributor guide, beside the
+command that regenerates what it feeds.
 
 ### Audit dependencies on a schedule
 
