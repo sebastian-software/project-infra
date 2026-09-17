@@ -170,6 +170,12 @@ whole release; nothing is published to a registry, and
 [`.release-please-manifest.json`](.release-please-manifest.json) records the
 released version.
 
+The workflow passes `secrets.RELEASE_PLEASE_TOKEN` and falls back to
+`GITHUB_TOKEN`: that secret has to exist for the `Check` and `PR title`
+workflows to run on the release pull request, because GitHub starts no workflow
+runs for events created with the built-in token, and without it the release
+pull request opens with no checks at all.
+
 After the first generated release pull request is merged, drop `bootstrap-sha`
 from [`release-please-config.json`](release-please-config.json). Release Please
 ignores it from then on, and removing it keeps the configuration honest.
