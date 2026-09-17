@@ -34,5 +34,6 @@ jobs:
           manifest-file: .release-please-manifest.json
           # GitHub starts no workflow runs for events created with the built-in
           # GITHUB_TOKEN, so the release pull request would carry no checks. The
-          # fallback keeps a fork or a revoked secret from failing the workflow.
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          # organization supplies this secret; a missing one fails the workflow
+          # rather than opening an unchecked release pull request.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
