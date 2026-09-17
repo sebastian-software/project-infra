@@ -70,6 +70,27 @@ Where a check needs a long flag list, declare a Cargo alias for it, as the
 contributor and the workflow then run the same name instead of two flag lists
 that drift apart.
 
+A published library crate also carries a compatibility contract. Run
+`cargo-semver-checks` on pull requests with the base commit as the baseline: it
+compares the rustdoc of both revisions and names the rule a change breaks, which
+no test suite reports, because a removed variant or an added trait bound still
+compiles here and fails in a dependent crate. State the feature group it checks;
+an item reachable only behind a feature is invisible to a default-features run.
+The [semver job excerpt](../assets/ci/semver.yml) shows the baseline input, the
+full history the comparison needs, and the single reviewed break that redefines
+the contract before the first stable release.
+
+A public-API snapshot committed next to the crate answers a different question:
+its diff shows what the surface becomes, not only whether the change breaks it.
+That is worth its maintenance once reviewers govern the API of a stable library,
+and is churn in a crate whose surface still moves with every feature. The
+[snapshot script](../assets/rust/scripts/check-public-api.sh) regenerates the
+listed crates' surfaces and diffs them against the committed files, or rewrites
+those files with `--write`. The snapshot tool reads rustdoc's JSON output,
+which a stable toolchain does not expose, so pin the nightly release and the
+tool version together wherever the project installs them; an unpinned pair
+fails the check on an unrelated toolchain update.
+
 Keep extended checks such as fuzzing and benchmarks in named gates with their
 prerequisites documented. Their cost and external requirements should not make
 the ordinary development loop unreliable.

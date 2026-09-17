@@ -179,14 +179,14 @@ token and the write permissions the job needs.
 Packaging can omit files or break entry points even when source tests pass.
 Exercise the installed artifact at the boundary the consumer uses.
 
-| Artifact              | Check                                                                                                    |
-| --------------------- | -------------------------------------------------------------------------------------------------------- |
-| npm package           | Install the packed tarball in a clean consumer; check exports, declarations, and promised module formats |
-| Rust crate            | Run Cargo package verification and check intended public features and included files                     |
-| Native Node package   | Check wrapper/native versions, platform selection, and loading a packaged binding                        |
-| Downloaded CLI        | Smoke-test the binary and verify published checksums                                                     |
-| Homebrew formula      | Validate the formula and install/test its referenced artifact                                            |
-| Git-installed package | Verify the Git consumer path and keep required built files committed and current                         |
+| Artifact              | Check                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| npm package           | Install the packed tarball in a clean consumer; check exports, declarations, and promised module formats                                                      |
+| Rust crate            | Run Cargo package verification, check intended public features and included files, and check the [public API contract](rust.md#share-the-local-and-ci-checks) |
+| Native Node package   | Check wrapper/native versions, platform selection, and loading a packaged binding                                                                             |
+| Downloaded CLI        | Smoke-test the binary and verify published checksums                                                                                                          |
+| Homebrew formula      | Validate the formula and install/test its referenced artifact                                                                                                 |
+| Git-installed package | Verify the Git consumer path and keep required built files committed and current                                                                              |
 
 Use package validators where they cover the contract. Commit built output only
 when the distribution path requires it. Scale validation to the product rather

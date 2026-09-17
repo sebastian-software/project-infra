@@ -1,0 +1,31 @@
+# A job for .github/workflows/check.yml, for a repository that publishes
+# library crates. Merge it into that workflow's `jobs:` block instead of adding
+# a second workflow. It runs on pull requests only, so an aggregate gate that
+# requires a `success` result has to accept `skipped` for it on push runs.
+# Replace every <full-commit-sha> with the commit of the release named in the
+# comment and keep that comment current.
+semver:
+  if: github.event_name == 'pull_request'
+  runs-on: ubuntu-latest
+  timeout-minutes: 20
+  permissions:
+    contents: read
+  steps:
+    # The baseline is read from the local clone, which a shallow checkout
+    # does not contain.
+    - uses: actions/checkout@<full-commit-sha> # vX.Y.Z
+      with:
+        fetch-depth: 0
+    - uses: obi1kenobi/cargo-semver-checks-action@<full-commit-sha> # vX.Y.Z
+      with:
+        # Every published crate of the workspace, in one list.
+        package: <crate>,<other-crate>
+        # The pull request's base commit, so the report describes this
+        # branch's change rather than everything merged since the last release.
+        baseline-rev: ${{ github.event.pull_request.base.sha }}
+        # An item reachable only behind a feature is invisible to a
+        # default-features run; name the group the crates' contract covers.
+        feature-group: all-features
+        # Before the first stable release, one reviewed pull request may
+        # redefine the contract: add `release-type: major` there so the break
+        # establishes the new baseline, then remove it again.
