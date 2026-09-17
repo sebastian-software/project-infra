@@ -95,6 +95,9 @@ incident.
 ADR statuses are `proposed`, `accepted`, `rejected`, `deprecated`, and
 `superseded`. Accepted ADRs preserve the decision as made. Correct typos or broken
 links in place; use a successor ADR for a semantic change and link both records.
+The skill gives consuming projects the same format, vocabulary, and index rule
+under [record decisions in one indexed set](skills/project-infra/references/documentation.md#record-decisions-in-one-indexed-set),
+so change the two together.
 
 RFCs begin as `draft` and can evolve during discussion. When a proposal is
 resolved, record the decision in an ADR and remove the RFC, or mark it `resolved`
