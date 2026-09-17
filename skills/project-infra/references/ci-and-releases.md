@@ -35,12 +35,16 @@ them into a repository.
 | `check-action-pins` | Failing a workflow whose `uses:` entries are not full commit SHAs                                                                        |
 
 They live in
-[sebastian-software/standards](https://github.com/sebastian-software/standards/tree/main/.github/actions),
-whose own README documents each input:
+[sebastian-software/project-infra](https://github.com/sebastian-software/project-infra/tree/main/.github/actions),
+whose README documents each input:
 
 ```yaml
-- uses: sebastian-software/standards/.github/actions/publish-crates@<sha> # v0.13.0
+- uses: sebastian-software/project-infra/.github/actions/publish-crates@<sha> # v0.0.0
 ```
+
+A repository still pinned to `sebastian-software/standards` keeps working until
+that repository is retired. Move such a pin when the project has other reasons
+to change its workflow, not on its own.
 
 Both publish actions authenticate through Trusted Publishing and need
 `permissions: id-token: write`. A first-ever publish cannot use it, because the
