@@ -75,6 +75,17 @@ framework, and tests. When both linters run, give overlapping checks a clear
 owner. Keep rule definitions in the shared configuration and local exceptions
 narrow. Remove a lint check only when its required behavior remains covered.
 
+The shared ESLint configuration carries the spell check as well, through its
+`@cspell/spellchecker` rule: the project's lint command reports a misspelling in
+the identifiers, strings, and comments ESLint already parses, so the check has
+one owner, needs no separate tool, and adds no step to the gate. Keep the
+project's own vocabulary in a `cspell.json`, which the rule finds by searching
+upward from each checked file, so a workspace can hold the list beside the code
+it covers. Limit that list to product names, tool names, and identifiers no
+general dictionary can hold; a list that gains a word for every false positive
+stops catching anything. A project area that does not run ESLint has no reader
+for such a file and carries none.
+
 ## Type contracts and modules
 
 Enable `strict`, `noUncheckedIndexedAccess`, and `exactOptionalPropertyTypes`.
