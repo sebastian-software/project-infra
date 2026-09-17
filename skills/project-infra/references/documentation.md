@@ -134,6 +134,24 @@ lost on the next run. Keep rendering and branding policy with mdtheme and its
 theme; reference their documentation instead of restating its configuration
 schema here.
 
+A project that belongs to a published tool family also carries a block naming
+its siblings. Render that block from the family registry, which owns the member
+list, the one-line jobs, and the links; a copy edited by hand is already wrong
+in every repository except the one where the member changed. The root README
+takes the block from a second theme in `mdtheme.yaml`, composed inside the
+shared frame, so the file the project already generates needs no extra step. The
+READMEs that crates.io and npm render are separate published files no theme
+reaches, and both drop the HTML the themed block's tables use, so they take the
+plain-Markdown registry variant from the
+[shared script](../assets/common/readme-family.sh). Pin its generator to a
+commit for the same reason a theme is pinned, and move both pins in one change,
+so the block and the frame around it come from one reviewed state of the
+registry. A pinned Git revision is invisible to an updater that reads manifests,
+so it needs an explicit rule under the
+[shared dependency policy](ci-and-releases.md#share-dependency-policy) or it
+never moves. A theme that renders the registry variant itself would retire the
+script and the package manager this check adds to the project.
+
 ## Keep agent integrations thin
 
 Maintain a concise root `AGENTS.md`. Add scoped instructions only when a
