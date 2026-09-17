@@ -63,6 +63,51 @@ package-manager-installed hook runner stays acceptable in a Node-only project
 that already carries one and follows these rules; do not add a runtime and a
 dependency to a project that otherwise needs neither.
 
+## Test what two places must agree on
+
+A repository states the same fact in several places: the contributor guide names
+the gate, a workflow runs it, a manifest declares the supported toolchain, a
+release configuration lists the files carrying the version, and a README promises
+a reader a section. No compiler, linter, or test suite compares those places, so
+they drift apart silently and the drift surfaces where it costs the most: a
+contributor running commands CI does not run, a release commit contradicting its
+own tag, a promised section that no longer exists. A repository-contract test is
+a small check that fails when two such places stop agreeing. It asserts nothing
+about product behavior; it asserts that each fact has one source and that every
+restatement still matches that source.
+
+Pin down the agreements a contributor, a reader, or a release depends on:
+
+- the gate commands the contributor guide documents appear verbatim as CI steps;
+- the [MSRV](rust.md#declare-compatibility-in-cargo), the coverage floor, and
+  each released version have one source, and every other occurrence is derived
+  from it rather than restated;
+- every file carrying a version is covered by a
+  [release updater](ci-and-releases.md#configure-release-please);
+- the README and the other entry points still carry the sections and links they
+  promise, and every decision record appears in its
+  [index](documentation.md#record-decisions-in-one-indexed-set);
+- a number quoted in prose is backed by the committed report that produced it.
+
+Keep these checks in `scripts/` or `tests/` and run them from the gate, so drift
+fails on the pull request that introduces it instead of on the release that trips
+over it. They read files and finish in milliseconds, which is what makes running
+them on every change affordable. The
+[contract check](../assets/common/check-contracts.mjs) implements the two that
+apply to any repository — the documented gate commands run in CI, and the
+declared MSRV is the only one stated — and takes `--section` when the gate lives
+under a heading it does not recognize. Assertions about one repository's jobs,
+documents, or release configuration stay with that repository, next to the files
+they describe.
+
+Two properties decide whether such a check earns its maintenance. It must name
+both places in its failure message, so the fix is obvious without reading the
+check, and it must fail when it finds nothing to compare, because a check that
+silently matches an empty set reports success forever. Comparing command text
+verbatim is strict by design: a CI step that composes or parameterizes a
+documented command stops matching it. Resolve that by moving the work into the
+one shared script the gate already requires, not by loosening the comparison.
+
 ## Keep tool selection in the project
 
 Declare package-manager versions and supported runtimes in native manifests.
